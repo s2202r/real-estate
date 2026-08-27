@@ -5,9 +5,9 @@ import {
   IndianRupee,
   LayoutDashboard,
   Network,
-  Users,
   UserRound,
-} from "lucide-react";
+  Users,
+} from "@/components/layout/nav-icons";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { getAgentDashboard, getUnreadNotificationCount } from "@/lib/data/dashboard";

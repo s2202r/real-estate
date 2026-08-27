@@ -11,7 +11,7 @@ import {
   Settings,
   TrendingUp,
   Users,
-} from "lucide-react";
+} from "@/components/layout/nav-icons";
 import { requireUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getAdminDashboard, getUnreadNotificationCount } from "@/lib/data/dashboard";

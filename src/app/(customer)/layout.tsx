@@ -6,7 +6,7 @@ import {
   ListChecks,
   Search,
   UserRound,
-} from "lucide-react";
+} from "@/components/layout/nav-icons";
 import { requireUser } from "@/lib/auth/session";
 import { getUnreadNotificationCount } from "@/lib/data/dashboard";
 import { DashboardShell, type NavItem } from "@/components/layout/dashboard-shell";
