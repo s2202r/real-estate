@@ -58,7 +58,7 @@ export default function AboutPage() {
 
       <div className="mt-10 flex flex-wrap gap-3">
         <Button asChild>
-          <Link href="/how-it-works">How it works</Link>
+          <Link href="/properties">Browse properties</Link>
         </Button>
         <Button asChild variant="outline">
           <Link href="/contact">Contact us</Link>

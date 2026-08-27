@@ -143,6 +143,19 @@ export function capabilitiesOf(actor: ActorRoles): Capability[] {
   return [...(ADMIN_CAPABILITIES[actor.adminRole] ?? [])];
 }
 
+/**
+ * Who may read the network guide ("How it works").
+ *
+ * The guide documents the mechanics professionals operate inside — passport
+ * identity, visit attribution, and how a commission split is computed. It is
+ * written for the people those rules bind, so it is shown to agents and
+ * investors, and to platform staff (who need to see what those users see).
+ * Customers and anonymous visitors get the marketing pages instead.
+ */
+export function canViewNetworkGuide(actor: ActorRoles): boolean {
+  return hasRole(actor, "agent") || hasRole(actor, "investor") || isAdmin(actor);
+}
+
 /** The dashboard a user should land on after signing in. */
 export function defaultLandingPath(actor: ActorRoles): string {
   if (isAdmin(actor)) return "/admin";

@@ -104,6 +104,7 @@ npm run dev
 | --- | --- |
 | `/` | Public site |
 | `/properties` | Verified property search |
+| `/how-it-works` | Network guide — agents, investors and admins only |
 | `/dashboard` | Customer |
 | `/agent/dashboard` | Agent workspace |
 | `/admin` | Operations console |
@@ -116,7 +117,7 @@ carries `is_demo = true` and every display name is prefixed `[Demo]`.
 
 | Email | Role |
 | --- | --- |
-| `admin@demo.realestatenetwork.test` | Admin (super_admin) |
+| `admin@demo.getmespace.test` | Admin (super_admin) |
 | `agent1@…` … `agent10@…` | Agents (agent1 and agent4 are the most complete) |
 | `customer1@…` … `customer5@…` | Customers |
 | `investor1@…`, `investor2@…` | Investors (module disabled by default) |
@@ -189,7 +190,7 @@ migrations have not been applied. Run `supabase db push`, or paste
 
 **`Demo data is already present in this database`.** The seed has run before and
 is not designed to run twice. Use `supabase db reset`, or delete the demo rows
-(`delete from auth.users where email like '%@demo.realestatenetwork.test'`
+(`delete from auth.users where email like '%@demo.getmespace.test'`
 cascades to everything else).
 
 **Seeded accounts exist but sign-in fails.** Check that `auth.identities` has a

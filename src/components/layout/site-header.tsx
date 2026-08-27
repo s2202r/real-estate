@@ -12,18 +12,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from "@/components/brand/logo";
 import { appConfig } from "@/config/app";
 import { getSessionUser } from "@/lib/auth/session";
-import { defaultLandingPath } from "@/lib/auth/permissions";
+import { canViewNetworkGuide, defaultLandingPath } from "@/lib/auth/permissions";
 import { initialsOf } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/properties", label: "Properties" },
   { href: "/agents", label: "Agents" },
-  { href: "/how-it-works", label: "How it works" },
   { href: "/about", label: "About" },
 ] as const;
 
+/** Shown only to the network members it is written for. */
+const NETWORK_LINK = { href: "/how-it-works", label: "How it works" } as const;
+
 export async function SiteHeader() {
   const user = await getSessionUser();
+  const navLinks =
+    user && canViewNetworkGuide(user) ? [...NAV_LINKS, NETWORK_LINK] : [...NAV_LINKS];
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -35,7 +39,7 @@ export async function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <Button key={link.href} asChild variant="ghost" size="sm">
               <Link href={link.href}>{link.label}</Link>
             </Button>
@@ -87,7 +91,7 @@ export async function SiteHeader() {
                 </DialogTitle>
               </DialogHeader>
               <nav className="flex flex-col gap-1" aria-label="Mobile">
-                {NAV_LINKS.map((link) => (
+                {navLinks.map((link) => (
                   <Button key={link.href} asChild variant="ghost" className="justify-start">
                     <Link href={link.href}>{link.label}</Link>
                   </Button>

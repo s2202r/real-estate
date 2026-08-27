@@ -5,6 +5,7 @@ import {
   assertCan,
   assertRole,
   can,
+  canViewNetworkGuide,
   capabilitiesOf,
   defaultLandingPath,
   hasRole,
@@ -105,5 +106,27 @@ describe("landing paths", () => {
     expect(defaultLandingPath({ roles: ["agent", "admin"], adminRole: "operations_admin" })).toBe(
       "/admin",
     );
+  });
+});
+
+describe("network guide visibility", () => {
+  it("shows the guide to the network members it is written for", () => {
+    expect(canViewNetworkGuide(agent)).toBe(true);
+    expect(canViewNetworkGuide({ roles: ["investor"], adminRole: null })).toBe(true);
+    expect(canViewNetworkGuide(dualRole)).toBe(true);
+  });
+
+  it("shows it to platform staff, who need to see what those users see", () => {
+    expect(canViewNetworkGuide(superAdmin)).toBe(true);
+    expect(canViewNetworkGuide(supportAdmin)).toBe(true);
+  });
+
+  it("hides it from customers and role-less accounts", () => {
+    expect(canViewNetworkGuide(customer)).toBe(false);
+    expect(canViewNetworkGuide(roleless)).toBe(false);
+  });
+
+  it("shows it to a customer who is also an agent", () => {
+    expect(canViewNetworkGuide({ roles: ["customer", "agent"], adminRole: null })).toBe(true);
   });
 });

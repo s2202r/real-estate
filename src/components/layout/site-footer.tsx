@@ -2,16 +2,27 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { appConfig } from "@/config/app";
 import { supportedCities } from "@/config/app";
+import { getSessionUser } from "@/lib/auth/session";
+import { canViewNetworkGuide } from "@/lib/auth/permissions";
+
+interface FooterLink {
+  readonly href: string;
+  readonly label: string;
+}
+
+const PLATFORM_LINKS: readonly FooterLink[] = [
+  { href: "/properties", label: "Browse properties" },
+  { href: "/agents", label: "Find an agent" },
+  { href: "/register?role=agent", label: "Join as an agent" },
+];
+
+/** Shown only to the network members it is written for. */
+const NETWORK_LINK: FooterLink = { href: "/how-it-works", label: "How it works" };
 
 const FOOTER_SECTIONS = [
   {
     title: "Platform",
-    links: [
-      { href: "/properties", label: "Browse properties" },
-      { href: "/agents", label: "Find an agent" },
-      { href: "/how-it-works", label: "How it works" },
-      { href: "/register?role=agent", label: "Join as an agent" },
-    ],
+    links: PLATFORM_LINKS,
   },
   {
     title: "Company",
@@ -22,8 +33,10 @@ const FOOTER_SECTIONS = [
   },
 ] as const;
 
-export function SiteFooter() {
+export async function SiteFooter() {
   const year = new Date().getFullYear();
+  const user = await getSessionUser();
+  const showNetworkLink = user !== null && canViewNetworkGuide(user);
 
   return (
     <footer className="mt-20 border-t bg-muted/30">
@@ -42,7 +55,10 @@ export function SiteFooter() {
             <div key={section.title}>
               <h2 className="text-sm font-semibold">{section.title}</h2>
               <ul className="mt-3 space-y-2">
-                {section.links.map((link) => (
+                {[
+                  ...section.links,
+                  ...(section.title === "Platform" && showNetworkLink ? [NETWORK_LINK] : []),
+                ].map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}

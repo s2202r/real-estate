@@ -1,20 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, Calculator, Fingerprint, Network, ShieldCheck, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { appConfig } from "@/config/app";
+import { getSessionUser } from "@/lib/auth/session";
+import { canViewNetworkGuide } from "@/lib/auth/permissions";
 
 export const metadata: Metadata = {
   title: "How it works",
   description:
     "How the verified inventory network works for customers, agents and investors — property passports, the visit marketplace and transparent commission.",
   alternates: { canonical: `${appConfig.url}/how-it-works` },
+  // The guide is for signed-in agents and investors, so it is not a page
+  // search engines should index or surface to the public.
+  robots: { index: false, follow: false },
 };
 
-export default function HowItWorksPage() {
+// The page renders differently per viewer (in fact, only for some viewers), so
+// it must never be served from a prerendered shell.
+export const dynamic = "force-dynamic";
+
+export default async function HowItWorksPage() {
+  const user = await getSessionUser();
+  if (!user) redirect("/login?next=%2Fhow-it-works");
+  if (!canViewNetworkGuide(user)) redirect("/unauthorized");
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
       <header>

@@ -221,7 +221,7 @@ export default async function HomePage() {
                   <Link href="/register?role=agent">Join as an agent</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link href="/how-it-works">See how commission works</Link>
+                  <Link href="/login">Agent sign in</Link>
                 </Button>
               </div>
             </CardContent>
