@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { VerificationBadgeList } from "@/components/shared/verification-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import type { Enums } from "@/types/database";
@@ -13,7 +13,7 @@ import type { Enums } from "@/types/database";
 export const metadata = { title: "Profile and verification" };
 
 export default async function AgentProfilePage() {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const [agent, verifications, rera] = await Promise.all([
     getAgent(user.agentId),
     getVerifications(user.agentId),

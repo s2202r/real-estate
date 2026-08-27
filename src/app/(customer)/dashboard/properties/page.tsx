@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PropertyGrid } from "@/components/shared/property-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { requireCustomer } from "@/lib/auth/session";
+import { requireCustomerPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { searchListings } from "@/lib/data/listings";
@@ -22,7 +22,7 @@ export const metadata = { title: "Recommended properties" };
  * requirement, rather than losing trust in the recommendations.
  */
 export default async function RecommendedPage() {
-  const user = await requireCustomer();
+  const user = await requireCustomerPage();
   const requirements = await getActiveRequirements(user.customerId);
 
   if (requirements.length === 0) {

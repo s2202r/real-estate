@@ -14,14 +14,14 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { getAgentDashboard } from "@/lib/data/dashboard";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { formatMoney, money } from "@/lib/domain/money";
 
 export default async function AgentDashboardPage() {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const stats = await getAgentDashboard(user.agentId);
   const [offers, pipeline, upcoming] = await Promise.all([
     getVisitOffers(user.agentId),

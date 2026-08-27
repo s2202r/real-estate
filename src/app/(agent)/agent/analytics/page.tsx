@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/shared/stat-card";
 import { VerificationBadgeList } from "@/components/shared/verification-badge";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { calculateTrustScore } from "@/lib/domain/scoring";
@@ -20,7 +20,7 @@ export const metadata = { title: "Performance" };
  * to game.
  */
 export default async function AgentAnalyticsPage() {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const agent = await getAgent(user.agentId);
 
   if (!agent) {

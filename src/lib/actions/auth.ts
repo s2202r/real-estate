@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/session";
+import { defaultLandingPath } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/config/env";
 import { appConfig } from "@/config/app";
 import { getRateLimiter, rateLimitKey, clientIpFrom } from "@/lib/security/rate-limit";
@@ -93,7 +95,14 @@ export async function signIn(
   }
 
   revalidatePath("/", "layout");
-  redirect(parsed.data.next && parsed.data.next.startsWith("/") ? parsed.data.next : "/dashboard");
+
+  // Land on the workspace this account actually has. Sending every role to
+  // /dashboard put agents and investors in the customer area, where the pages
+  // have no profile to work with.
+  if (parsed.data.next?.startsWith("/")) redirect(parsed.data.next);
+
+  const user = await getSessionUser();
+  redirect(user ? defaultLandingPath(user) : "/dashboard");
 }
 
 export async function signUp(

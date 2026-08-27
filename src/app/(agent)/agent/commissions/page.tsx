@@ -12,7 +12,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CommissionBreakdown } from "@/components/shared/commission-breakdown";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { formatMoney, fromMajor, money } from "@/lib/domain/money";
@@ -28,7 +28,7 @@ export const metadata = { title: "Earnings" };
  * has no reason to suspect one.
  */
 export default async function AgentCommissionsPage() {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const [ledger, calculations] = await Promise.all([
     getLedger(user.agentId),
     getCalculations(user.agentId),

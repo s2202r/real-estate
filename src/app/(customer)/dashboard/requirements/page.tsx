@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RequirementForm } from "./requirement-form";
-import { requireCustomer } from "@/lib/auth/session";
+import { requireCustomerPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { formatMoneyCompact, fromMajor } from "@/lib/domain/money";
@@ -11,7 +11,7 @@ import { formatMoneyCompact, fromMajor } from "@/lib/domain/money";
 export const metadata = { title: "My requirements" };
 
 export default async function RequirementsPage() {
-  const user = await requireCustomer();
+  const user = await requireCustomerPage();
   const requirements = await getRequirements(user.customerId);
 
   return (

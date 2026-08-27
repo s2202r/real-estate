@@ -14,7 +14,7 @@ import {
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SubmitListingButton } from "./submit-button";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { formatMoneyCompact, fromMajor } from "@/lib/domain/money";
@@ -27,7 +27,7 @@ export default async function AgentListingsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const params = await searchParams;
   const created = typeof params.created === "string" ? params.created : null;
   const listings = await getListings(user.agentId);

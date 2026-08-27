@@ -1,4 +1,4 @@
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { ListingForm } from "./listing-form";
@@ -6,7 +6,7 @@ import { ListingForm } from "./listing-form";
 export const metadata = { title: "New listing" };
 
 export default async function NewListingPage() {
-  await requireAgent();
+  await requireAgentPage();
   const amenities = await getAmenities();
 
   return <ListingForm amenities={amenities} />;

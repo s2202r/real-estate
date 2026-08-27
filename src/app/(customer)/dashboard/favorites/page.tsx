@@ -3,7 +3,7 @@ import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PropertyGrid } from "@/components/shared/property-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { requireCustomer } from "@/lib/auth/session";
+import { requireCustomerPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import type { ListingSummary } from "@/lib/data/listings";
@@ -11,7 +11,7 @@ import type { ListingSummary } from "@/lib/data/listings";
 export const metadata = { title: "Saved properties" };
 
 export default async function FavoritesPage() {
-  const user = await requireCustomer();
+  const user = await requireCustomerPage();
   const listings = await getFavourites(user.customerId);
 
   return (

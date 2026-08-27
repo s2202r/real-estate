@@ -2,7 +2,7 @@ import { UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { formatMoneyCompact, fromMajor } from "@/lib/domain/money";
@@ -17,7 +17,7 @@ export const metadata = { title: "Contacts" };
  * them.
  */
 export default async function AgentContactsPage() {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const [contacts, tasks] = await Promise.all([
     getContacts(user.agentId),
     getOpenTasks(user.agentId),

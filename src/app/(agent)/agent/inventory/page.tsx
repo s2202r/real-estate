@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ShareRequestButton, ShareResponseButtons } from "./share-actions";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { formatMoneyCompact, fromMajor } from "@/lib/domain/money";
@@ -22,7 +22,7 @@ export const metadata = { title: "Network inventory" };
  * terms, instead of losing the customer or quietly poaching the inventory.
  */
 export default async function NetworkInventoryPage() {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const [incoming, outgoing, available] = await Promise.all([
     getIncomingRequests(user.agentId),
     getOutgoingRequests(user.agentId),

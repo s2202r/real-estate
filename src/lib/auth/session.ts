@@ -7,6 +7,7 @@ import { isSupabaseConfigured } from "@/config/env";
 import {
   AuthenticationError,
   assertCan,
+  defaultLandingPath,
   type ActorRoles,
   type AdminRole,
   type AppRole,
@@ -105,6 +106,40 @@ export async function requireCapability(capability: Capability): Promise<Session
     redirect("/unauthorized");
   }
   return user;
+}
+
+/**
+ * For Server Components: require a customer profile, or send them somewhere
+ * that makes sense.
+ *
+ * The distinction from `requireCustomer` below matters. That one THROWS, which
+ * is right in a Server Action — the caller turns it into a 401. Thrown from a
+ * page render there is nobody to catch it, so it becomes a 500 and an error
+ * screen. An agent who signs in and lands in the customer workspace is not an
+ * error; they are simply in the wrong room.
+ */
+export async function requireCustomerPage(
+  returnTo?: string,
+): Promise<SessionUser & { customerId: string }> {
+  const user = await requireUser(returnTo);
+  if (!user.customerId) {
+    const home = defaultLandingPath(user);
+    // The customer overview explains the situation rather than 404ing, so it
+    // is the right destination when the account has no other workspace.
+    redirect(home === "/dashboard" ? "/dashboard" : home);
+  }
+  return user as SessionUser & { customerId: string };
+}
+
+/** The same, for the agent workspace. */
+export async function requireAgentPage(
+  returnTo?: string,
+): Promise<SessionUser & { agentId: string }> {
+  const user = await requireUser(returnTo);
+  // Matches the group layout: no agent profile means no agent workspace, and
+  // /unauthorized explains that without bouncing between two guards.
+  if (!user.agentId) redirect("/unauthorized");
+  return user as SessionUser & { agentId: string };
 }
 
 /** For Server Actions and route handlers: throw rather than redirect. */

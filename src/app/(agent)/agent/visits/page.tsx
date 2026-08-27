@@ -5,14 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { VisitOfferActions, VisitConductActions } from "./visit-actions";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 
 export const metadata = { title: "Visits" };
 
 export default async function AgentVisitsPage() {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const [offers, assigned] = await Promise.all([
     getOffers(user.agentId),
     getAssignedVisits(user.agentId),

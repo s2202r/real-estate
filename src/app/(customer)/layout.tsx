@@ -7,7 +7,9 @@ import {
   Search,
   UserRound,
 } from "@/components/layout/nav-icons";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { defaultLandingPath } from "@/lib/auth/permissions";
 import { getUnreadNotificationCount } from "@/lib/data/dashboard";
 import { DashboardShell, type NavItem } from "@/components/layout/dashboard-shell";
 
@@ -20,6 +22,16 @@ import { DashboardShell, type NavItem } from "@/components/layout/dashboard-shel
  */
 export default async function CustomerLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser("/dashboard");
+
+  // Every other workspace guards its own group; this one did not, so an agent
+  // who signed in and landed here reached pages that then threw. Send them to
+  // their own workspace — but only when they actually have one, or this would
+  // redirect to itself.
+  if (!user.customerId) {
+    const home = defaultLandingPath(user);
+    if (home !== "/dashboard") redirect(home);
+  }
+
   const unread = await getUnreadNotificationCount();
 
   const nav: NavItem[] = [

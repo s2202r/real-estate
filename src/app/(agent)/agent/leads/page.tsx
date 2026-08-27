@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { RevealContactButton } from "./reveal-contact";
-import { requireAgent } from "@/lib/auth/session";
+import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { formatMoneyCompact, fromMajor } from "@/lib/domain/money";
@@ -23,7 +23,7 @@ const OPEN_STAGES = ["NEW", "CONTACTED", "QUALIFIED", "PROPERTY_SHARED", "VISIT_
  * lead — property, stage, budget, timing — without handing over a phone book.
  */
 export default async function AgentLeadsPage() {
-  const user = await requireAgent();
+  const user = await requireAgentPage();
   const leads = await getLeads(user.agentId);
 
   const open = leads.filter((lead) => OPEN_STAGES.includes(lead.stage));

@@ -7,14 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { VisitConfirmation } from "@/components/shared/visit-confirmation";
-import { requireCustomer } from "@/lib/auth/session";
+import { requireCustomerPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 
 export const metadata = { title: "My site visits" };
 
 export default async function CustomerVisitsPage() {
-  const user = await requireCustomer();
+  const user = await requireCustomerPage();
   const visits = await getVisits(user.customerId);
 
   const today = new Date().toISOString().slice(0, 10);
