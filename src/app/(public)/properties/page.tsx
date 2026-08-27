@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PropertyGrid } from "@/components/shared/property-card";
@@ -11,6 +11,7 @@ import { TrustChips } from "@/components/shared/trust-strip";
 import { Pagination } from "@/components/shared/pagination";
 import { getLocalities, searchListings } from "@/lib/data/listings";
 import { parseListingFilters } from "@/lib/data/filters";
+import { resolveSearchIntent } from "@/lib/data/search-intent";
 import { appConfig } from "@/config/app";
 
 export const metadata: Metadata = {
@@ -26,7 +27,15 @@ export default async function PropertiesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const resolved = await searchParams;
-  const filters = parseListingFilters(resolved);
+  // A typed sentence becomes filters here, not only when someone clicks
+  // "Understand my query" — pressing Enter has to work.
+  const parsedFilters = parseListingFilters(resolved);
+  // `exact=1` is the escape hatch the interpretation line offers: match the
+  // words as typed and infer nothing.
+  const { filters, interpretation } =
+    resolved.exact === "1"
+      ? { filters: parsedFilters, interpretation: null }
+      : await resolveSearchIntent(parsedFilters);
   const [result, localities] = await Promise.all([
     searchListings(filters),
     filters.city ? getLocalities(filters.city) : Promise.resolve([]),
@@ -53,8 +62,25 @@ export default async function PropertiesPage({
         <TrustChips className="mt-4" />
       </header>
 
-      <div className="mb-6">
+      <div className="mb-6 space-y-3">
         <SearchBar defaultValue={filters.query ?? ""} />
+
+        {/* Say what the sentence was taken to mean, and offer a way out of it:
+            a guess the visitor cannot see or undo is worse than no guess. */}
+        {interpretation && (
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Sparkles className="size-4 text-primary" aria-hidden />
+            <span>
+              Searching for <span className="font-medium text-foreground">{interpretation}</span>
+            </span>
+            <Link
+              href={`/properties?q=${encodeURIComponent(filters.query ?? "")}&exact=1`}
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              Search the exact words instead
+            </Link>
+          </p>
+        )}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[16rem_1fr]">

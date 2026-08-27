@@ -4,6 +4,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { appConfig } from "@/config/app";
+import { searchTerms } from "@/lib/domain/search";
 import { boundingBox } from "@/lib/domain/geo";
 import type { Enums } from "@/types/database";
 
@@ -225,10 +226,23 @@ export async function searchListings(
   }
 
   if (filters.query) {
-    // Trigram indexes back the title match; locality is an exact-ish prefix.
-    const term = filters.query.replace(/[%,()]/g, " ").trim();
-    if (term) {
+    // Every term must appear somewhere (title, locality or city). Matching the
+    // whole phrase as one substring — which is what this used to do — found
+    // nothing for any query longer than a place name, because no listing title
+    // contains a sentence.
+    //
+    // Emitted as ONE nested expression rather than one `.or()` per term:
+    // repeated `or=` parameters depend on how PostgREST combines duplicate
+    // keys, and `and(or(...),or(...))` cannot be read two ways.
+    const terms = searchTerms(filters.query);
+    if (terms.length === 1) {
+      const term = terms[0]!;
       request = request.or(`title.ilike.%${term}%,locality.ilike.%${term}%,city.ilike.%${term}%`);
+    } else if (terms.length > 1) {
+      const groups = terms
+        .map((term) => `or(title.ilike.%${term}%,locality.ilike.%${term}%,city.ilike.%${term}%)`)
+        .join(",");
+      request = request.or(`and(${groups})`);
     }
   }
 
