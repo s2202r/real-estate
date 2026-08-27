@@ -112,13 +112,15 @@ npm run dev
 
 ## 6 · Demo accounts
 
-`supabase/seed.sql` creates 18 sign-in-ready accounts. Every seeded record
+`supabase/seed.sql` creates 28 sign-in-ready accounts, 20 verified agents, 90
+property passports and 130 listings (121 of them live) across all ten
+supported cities, including commercial space and plots. Every seeded record
 carries `is_demo = true` and every display name is prefixed `[Demo]`.
 
 | Email | Role |
 | --- | --- |
 | `admin@demo.getmespace.test` | Admin (super_admin) |
-| `agent1@…` … `agent10@…` | Agents (agent1 and agent4 are the most complete) |
+| `agent1@…` … `agent20@…` | Agents (agent1 and agent4 carry the full transaction story) |
 | `customer1@…` … `customer5@…` | Customers |
 | `investor1@…`, `investor2@…` | Investors (module disabled by default) |
 
