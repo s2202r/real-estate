@@ -39,6 +39,10 @@ crashing.
 
 ## 3 · Database
 
+> **Order matters.** `seed.sql` only inserts demo data — it does not create
+> tables. Running it first fails with
+> `relation "public.user_roles" does not exist`. Apply the schema, then the seed.
+
 ### With the Supabase CLI (recommended)
 
 ```bash
@@ -48,13 +52,26 @@ supabase db reset       # applies supabase/migrations, then supabase/seed.sql
 
 `supabase start` prints the local URL and keys — copy them into `.env.local`.
 
-### Against a hosted project
+### Against a hosted project, with the CLI
 
 ```bash
 supabase link --project-ref <your-project-ref>
 supabase db push                                    # migrations only
 psql "$DATABASE_URL" -f supabase/seed.sql           # optional demo data
 ```
+
+### Through the Supabase SQL editor, no CLI
+
+Pasting thirteen migration files in the right order is error-prone, so a
+consolidated file is generated for exactly this:
+
+1. Paste **`supabase/schema.sql`** into the SQL editor and run it.
+   (4,300 lines — the whole schema in dependency order.)
+2. Paste **`supabase/seed.sql`** and run it. Optional; demo data only.
+
+Both files refuse to run in the wrong order or twice, with a message that says
+what to do instead. `supabase/migrations/` remains the source of truth;
+`schema.sql` is a generated convenience, rebuilt with `bash scripts/build-schema.sh`.
 
 ### With plain psql, no Supabase CLI
 
@@ -94,15 +111,31 @@ npm run dev
 
 ## 6 · Demo accounts
 
-`supabase/seed.sql` creates demo users at `*@demo.realestatenetwork.test`
-(10 agents, 5 customers, 2 investors, 1 admin). Every seeded record carries
-`is_demo = true` and every display name is prefixed `[Demo]`.
+`supabase/seed.sql` creates 18 sign-in-ready accounts. Every seeded record
+carries `is_demo = true` and every display name is prefixed `[Demo]`.
 
-The seed does **not** set passwords — it inserts into `auth.users` directly, so
-the trigger-driven sign-up path is exercised. For local sign-in, either set a
-password through Supabase Studio, or register a fresh account at `/register`.
+| Email | Role |
+| --- | --- |
+| `admin@demo.realestatenetwork.test` | Admin (super_admin) |
+| `agent1@…` … `agent10@…` | Agents (agent1 and agent4 are the most complete) |
+| `customer1@…` … `customer5@…` | Customers |
+| `investor1@…`, `investor2@…` | Investors (module disabled by default) |
 
-To grant yourself admin after registering:
+**Password for all of them: `DemoPassword123!`**
+
+> Development only. These are real bcrypt-hashed credentials on confirmed
+> accounts — never seed them into a database that faces the internet.
+
+The seed writes complete GoTrue records: hashed password, `authenticated`
+aud/role, confirmed email, empty-string (never null) token columns, and a
+matching `auth.identities` row. A bare
+`insert into auth.users (id, email, raw_user_meta_data)` inserts successfully
+but produces accounts that cannot sign in, which is why the seed uses a helper.
+
+Profiles, roles and agent/customer records are still created by the real
+`handle_new_user` trigger, so the sign-up path is exercised rather than bypassed.
+
+To grant yourself admin after registering your own account:
 
 ```sql
 insert into public.user_roles (user_id, role, admin_role)
@@ -149,3 +182,16 @@ policy in `…_rls_policies.sql` before adding an exception — the boundary is
 meant to be tight.
 
 **Investor routes return 404.** Expected. See `docs/LEGAL_REVIEW.md` item L1.
+
+**`relation "public.user_roles" does not exist` when running the seed.** The
+migrations have not been applied. Run `supabase db push`, or paste
+`supabase/schema.sql` into the SQL editor first.
+
+**`Demo data is already present in this database`.** The seed has run before and
+is not designed to run twice. Use `supabase db reset`, or delete the demo rows
+(`delete from auth.users where email like '%@demo.realestatenetwork.test'`
+cascades to everything else).
+
+**Seeded accounts exist but sign-in fails.** Check that `auth.identities` has a
+row per user and that `confirmation_token` / `recovery_token` are empty strings
+rather than null — GoTrue scans those into Go strings and a null breaks login.

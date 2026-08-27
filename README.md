@@ -49,14 +49,20 @@ cp .env.example .env.local     # then fill in your Supabase project values
 
 # 3 · Database (requires the Supabase CLI)
 supabase start
-supabase db reset              # applies migrations + seed data
+supabase db reset              # applies migrations, THEN seed data
 
 # 4 · Run
 npm run dev                    # http://localhost:3000
 ```
 
-Full instructions, including running without the Supabase CLI, are in
-[SETUP.md](./SETUP.md).
+**No Supabase CLI?** Paste `supabase/schema.sql` into the Supabase SQL editor
+and run it, then paste `supabase/seed.sql`. In that order — the seed only
+inserts data and fails on an empty database.
+
+Demo sign-in: `admin@demo.realestatenetwork.test` / `DemoPassword123!`
+(also `agent1..10@` and `customer1..5@` at the same domain).
+
+Full instructions are in [SETUP.md](./SETUP.md).
 
 ### Verify
 

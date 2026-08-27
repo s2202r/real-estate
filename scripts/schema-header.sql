@@ -1,0 +1,27 @@
+-- ===========================================================================
+-- Real Estate Network — consolidated schema
+-- ===========================================================================
+-- GENERATED FILE. Do not edit by hand.
+--
+-- Every migration in supabase/migrations/, concatenated in order. This exists
+-- for the Supabase SQL-editor workflow, where pasting thirteen files in the
+-- right order is error-prone.
+--
+-- Regenerate with:  bash scripts/build-schema.sh
+--
+-- ---------------------------------------------------------------------------
+-- HOW TO USE
+-- ---------------------------------------------------------------------------
+--   1. Paste this whole file into the Supabase SQL editor and run it.
+--   2. THEN paste supabase/seed.sql and run that (optional demo data).
+--
+-- Running seed.sql first fails with:
+--   ERROR: relation "public.user_roles" does not exist
+-- because the seed assumes this schema already exists.
+--
+-- If you have the Supabase CLI, prefer `supabase db push` (or `db reset`,
+-- which also applies the seed) over this file — it tracks migration history.
+-- ===========================================================================
+
+
+-- ===========================================================================

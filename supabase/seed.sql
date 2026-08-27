@@ -12,8 +12,45 @@
 --   marketplace -> visit qualified -> second visit by a third agent ->
 --   negotiation -> deal -> commission calculated -> ledger -> payout approved.
 --
--- Passwords for demo logins are set by scripts/seed-auth.ts (local only).
+-- DEMO LOGIN: every seeded account uses the password below. Development only.
+--
+--     email:    admin@demo.realestatenetwork.test   (also agent1..10@, customer1..5@)
+--     password: DemoPassword123!
+--
+-- PREREQUISITE: the migrations in supabase/migrations/ must already be applied.
+-- Running this file against an empty database fails with
+-- 'relation "public.user_roles" does not exist'.
 -- ===========================================================================
+
+-- pgcrypto lives in the `extensions` schema on hosted Supabase and in `public`
+-- on a plain Postgres, so crypt()/gen_salt() are resolved from either.
+set search_path = public, extensions, pg_temp;
+
+-- ---------------------------------------------------------------------------
+-- Precondition check
+-- ---------------------------------------------------------------------------
+-- Fail with an actionable message rather than a bare
+-- 'relation "public.user_roles" does not exist' twenty lines in.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  if to_regclass('public.user_roles') is null then
+    raise exception using
+      message = 'Schema not found: the migrations have not been applied to this database.',
+      detail  = 'seed.sql only inserts demo data; it does not create tables.',
+      hint    = 'Run `supabase db push` first, or paste supabase/schema.sql into the SQL editor and run it, then re-run this file.';
+  end if;
+
+  -- This file is not re-runnable: it seeds fixed ids and unique records. The
+  -- whole thing runs in one transaction, so a second run would roll back with
+  -- a confusing constraint violation partway through. Say so up front instead.
+  if exists (select 1 from public.profiles where is_demo limit 1) then
+    raise exception using
+      message = 'Demo data is already present in this database.',
+      detail  = 'seed.sql seeds fixed identifiers and is not designed to run twice.',
+      hint    = 'To reseed, run `supabase db reset`, or delete the existing demo rows first (every seeded profile has is_demo = true).';
+  end if;
+end $$;
 
 begin;
 
@@ -39,10 +76,74 @@ $$;
 -- the seed also exercises the sign-up path.
 -- ===========================================================================
 
+
+-- ---------------------------------------------------------------------------
+-- Demo user creation
+-- ---------------------------------------------------------------------------
+-- A bare `insert into auth.users (id, email, raw_user_meta_data)` succeeds but
+-- produces an account that CANNOT sign in: GoTrue requires a password, an
+-- `authenticated` aud/role, a confirmed email, empty-string (not null) token
+-- columns, and a matching row in auth.identities for the email provider.
+--
+-- This helper writes all of that, so the seeded accounts are usable
+-- immediately. Development only - every account shares one obvious password.
+-- ---------------------------------------------------------------------------
+create or replace function pg_temp.create_demo_user(
+  user_id uuid,
+  user_email text,
+  user_meta jsonb
+) returns uuid language plpgsql as $$
+begin
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change, email_change_token_new
+  ) values (
+    '00000000-0000-0000-0000-000000000000',
+    user_id,
+    'authenticated',
+    'authenticated',
+    user_email,
+    crypt('DemoPassword123!', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    user_meta,
+    now(),
+    now(),
+    -- Empty strings, never null: GoTrue scans these into Go strings and a null
+    -- makes every subsequent sign-in fail with a type-conversion error.
+    '', '', '', ''
+  )
+  on conflict (id) do nothing;
+
+  -- The identity row is what lets the email/password provider find the user.
+  -- Wrapped defensively because auth.identities has gained columns over time;
+  -- a schema mismatch should warn, not abort the whole seed.
+  begin
+    insert into auth.identities (
+      provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+    ) values (
+      user_id::text,
+      user_id,
+      jsonb_build_object('sub', user_id::text, 'email', user_email, 'email_verified', true),
+      'email',
+      now(), now(), now()
+    )
+    on conflict do nothing;
+  exception when others then
+    raise warning 'Could not create auth.identities row for % (%). Password sign-in may not work for this account.', user_email, sqlerrm;
+  end;
+
+  return user_id;
+end;
+$$;
+
 -- Admin
-insert into auth.users (id, email, raw_user_meta_data) values
-  (pg_temp.demo_uuid('admin', 1), 'admin@demo.realestatenetwork.test',
-   '{"full_name":"[Demo] Platform Admin","role":"customer"}'::jsonb);
+select pg_temp.create_demo_user(
+  pg_temp.demo_uuid('admin', 1),
+  'admin@demo.realestatenetwork.test',
+  '{"full_name":"[Demo] Platform Admin","role":"customer"}'::jsonb
+);
 
 -- Admins are never self-assigned; grant the role explicitly.
 insert into public.user_roles (user_id, role, admin_role)
@@ -50,8 +151,7 @@ values (pg_temp.demo_uuid('admin', 1), 'admin', 'super_admin')
 on conflict (user_id, role) do nothing;
 
 -- 10 agents across NCR, Mumbai, Bengaluru and Lucknow
-insert into auth.users (id, email, raw_user_meta_data)
-select
+select pg_temp.create_demo_user(
   pg_temp.demo_uuid('agent', n),
   'agent' || n || '@demo.realestatenetwork.test',
   jsonb_build_object(
@@ -63,11 +163,11 @@ select
     'phone', (array['9810012001','9820012002','9810012003','9930012004','9810012005',
                     '9880012006','9810012007','9840012008','9910012009','9810012010'])[n]
   )
+)
 from generate_series(1, 10) n;
 
 -- 5 customers
-insert into auth.users (id, email, raw_user_meta_data)
-select
+select pg_temp.create_demo_user(
   pg_temp.demo_uuid('customer', n),
   'customer' || n || '@demo.realestatenetwork.test',
   jsonb_build_object(
@@ -77,11 +177,11 @@ select
     'role', 'customer',
     'phone', (array['9811100001','9811100002','9811100003','9811100004','9811100005'])[n]
   )
+)
 from generate_series(1, 5) n;
 
 -- 2 investors
-insert into auth.users (id, email, raw_user_meta_data)
-select
+select pg_temp.create_demo_user(
   pg_temp.demo_uuid('investor', n),
   'investor' || n || '@demo.realestatenetwork.test',
   jsonb_build_object(
@@ -89,6 +189,7 @@ select
     'role', 'investor',
     'phone', (array['9811200001','9811200002'])[n]
   )
+)
 from generate_series(1, 2) n;
 
 update public.profiles
