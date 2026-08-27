@@ -44,26 +44,44 @@ output handled automatically.
 
 ### Environment variables
 
-| Variable | Scope | Required | Notes |
-| --- | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | All | ✅ | |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | All | ✅ | |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Production/Preview only** | ✅ | Bypasses RLS. Never `NEXT_PUBLIC_`. |
-| `NEXT_PUBLIC_APP_URL` | All | ✅ | Canonical URLs, OG tags, auth redirects |
-| `NEXT_PUBLIC_APP_NAME` | All | | Branding is configurable |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | All | | Restrict by HTTP referrer |
-| `GOOGLE_MAPS_API_KEY` | Server | | Restrict by IP — a **different** key |
-| `MAP_PROVIDER` | Server | | `google` or `none` |
-| `AI_PROVIDER`, `AI_PROVIDER_API_KEY`, `AI_MODEL` | Server | | Defaults to the rule-based provider |
-| `EMAIL_PROVIDER`, `EMAIL_PROVIDER_API_KEY`, `EMAIL_FROM` | Server | | `console` logs instead of sending |
-| `ENABLE_INVESTOR_MODULE` | Server | | **Must remain `false`** until legal sign-off |
-| `ENABLE_*` | Server | | See `.env.example` |
-| `CONTACT_REVEAL_DAILY_LIMIT` | Server | | Default 25 |
-| `VISIT_GEOFENCE_RADIUS_METERS` | Server | | Default 200 |
-| `VISIT_MIN_DURATION_MINUTES` | Server | | Default 10 |
+Vercel asks whether each variable is a **Secret** or a **Config** value, and
+warns when a `NEXT_PUBLIC_` name is stored as a Secret. The prefix is what puts
+a value in the browser bundle, so the two must agree — the table's Type column
+below is the answer for each variable, and it is not a matter of preference:
+
+- Every `NEXT_PUBLIC_*` value here **must keep its prefix** — the browser needs
+  it — so store it as **Config**. Removing the prefix does not hide the value,
+  it just stops the browser from receiving it, and the client breaks.
+- Every unprefixed value is **Secret**. Adding a `NEXT_PUBLIC_` prefix to one
+  of those would publish it, which for the service-role key means handing out
+  a credential that bypasses Row Level Security entirely.
+
+| Variable | Type | Scope | Required | Notes |
+| --- | --- | --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Config | All | ✅ | Public by design; the browser client connects with it |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Config | All | ✅ | Public by design. It carries the `anon` role and every query it makes is subject to RLS — that is the boundary, not the secrecy of this key |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | **Production/Preview only** | ✅ | Bypasses RLS. Never `NEXT_PUBLIC_` |
+| `NEXT_PUBLIC_APP_URL` | Config | All | ✅ | Canonical URLs, OG tags, auth redirects |
+| `NEXT_PUBLIC_APP_NAME` | Config | All | | Branding is configurable |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Config | All | | Restrict by HTTP referrer — a browser key is visible to anyone, so the referrer restriction is what protects it |
+| `GOOGLE_MAPS_API_KEY` | **Secret** | Server | | Restrict by IP — a **different** key |
+| `MAP_PROVIDER` | Config | Server | | `google` or `none` |
+| `AI_PROVIDER`, `AI_MODEL` | Config | Server | | Defaults to the rule-based provider |
+| `AI_PROVIDER_API_KEY` | **Secret** | Server | | Only needed for a hosted provider |
+| `EMAIL_PROVIDER`, `EMAIL_FROM` | Config | Server | | `console` logs instead of sending |
+| `EMAIL_PROVIDER_API_KEY` | **Secret** | Server | | Only needed once a real provider is set |
+| `ENABLE_INVESTOR_MODULE` | Config | Server | | **Must remain `false`** until legal sign-off |
+| `ENABLE_*` | Config | Server | | See `.env.example` |
+| `CONTACT_REVEAL_DAILY_LIMIT` | Config | Server | | Default 25 |
+| `VISIT_GEOFENCE_RADIUS_METERS` | Config | Server | | Default 200 |
+| `VISIT_MIN_DURATION_MINUTES` | Config | Server | | Default 10 |
 
 > Set `SUPABASE_SERVICE_ROLE_KEY` on Production and Preview only. It should not
 > exist in a local `.env` that might be shared.
+
+> `NEXT_PUBLIC_*` values are inlined into the bundle **at build time**. Adding
+> or changing one without redeploying changes nothing — the running deployment
+> still carries the values it was built with.
 
 ---
 
