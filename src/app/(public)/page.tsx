@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PropertyGrid } from "@/components/shared/property-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TrustStrip } from "@/components/shared/trust-strip";
 import { getFeaturedListings } from "@/lib/data/listings";
 import { appConfig, supportedCities } from "@/config/app";
 
@@ -124,6 +125,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* The four promises, immediately below the hero. */}
+      <TrustStrip />
 
       {/* What makes it different */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">

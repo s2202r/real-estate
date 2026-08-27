@@ -19,6 +19,9 @@ export const appConfig = {
   url: process.env.NEXT_PUBLIC_APP_URL || "https://getmespace.in",
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@getmespace.in",
 
+  /** The company that operates the product. Shown in the footer. */
+  legalEntity: process.env.NEXT_PUBLIC_LEGAL_ENTITY || "BUILTFORBUSINESS LLP",
+
   locale: process.env.DEFAULT_LOCALE || "en-IN",
   currency: process.env.DEFAULT_CURRENCY || "INR",
   country: process.env.DEFAULT_COUNTRY || "IN",

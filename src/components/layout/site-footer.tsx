@@ -49,6 +49,9 @@ export async function SiteFooter() {
               <Logo size={32} />
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">{appConfig.tagline}.</p>
+            <p className="mt-3 text-xs font-medium tracking-wide text-muted-foreground">
+              A product of {appConfig.legalEntity}
+            </p>
           </div>
 
           {FOOTER_SECTIONS.map((section) => (
@@ -91,7 +94,7 @@ export async function SiteFooter() {
 
         <div className="mt-10 flex flex-col gap-4 border-t pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
-            © {year} {appConfig.name}. All rights reserved.
+            © {year} {appConfig.legalEntity}. All rights reserved.
           </p>
           <p className="max-w-2xl">
             Property information is submitted by verified agents and reviewed by the platform before

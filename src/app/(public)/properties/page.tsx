@@ -7,6 +7,7 @@ import { PropertyGrid } from "@/components/shared/property-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { FilterPanel, SortSelect } from "@/components/shared/filter-panel";
 import { SearchBar } from "@/components/shared/search-bar";
+import { TrustChips } from "@/components/shared/trust-strip";
 import { Pagination } from "@/components/shared/pagination";
 import { getLocalities, searchListings } from "@/lib/data/listings";
 import { parseListingFilters } from "@/lib/data/filters";
@@ -49,6 +50,7 @@ export default async function PropertiesPage({
           {filters.locality ? ` in ${filters.locality}` : ""}. Every listing here has been reviewed
           by the platform before publication.
         </p>
+        <TrustChips className="mt-4" />
       </header>
 
       <div className="mb-6">
