@@ -9,6 +9,7 @@ import { EnquirySchema, RequirementSchema } from "@/lib/validation/leads";
 import { notify } from "@/lib/services/notifications";
 import { recordAudit, trackEvent } from "@/lib/services/audit";
 import { getRateLimiter, rateLimitKey, clientIpFrom } from "@/lib/security/rate-limit";
+import { serviceUnavailable } from "./guards";
 
 /**
  * Customer-facing lead actions.
@@ -145,6 +146,9 @@ export async function toggleFavourite(
   listingId: string,
   propertyId: string,
 ): Promise<ActionResult<{ favourited: boolean }>> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const user = await getSessionUser();
   if (!user?.customerId) {
     return { ok: false, message: "Sign in to save properties." };
@@ -269,6 +273,9 @@ export async function createRequirement(
  * Delegates to the service, which enforces ownership, quota and logging.
  */
 export async function revealContact(leadId: string): Promise<ActionResult<{ phone: string; email: string }>> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const user = await getSessionUser();
   if (!user?.agentId) return { ok: false, message: "Only agents can reveal contact details." };
   if (!isAdminClientAvailable()) {

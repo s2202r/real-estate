@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { clientEnv } from "@/config/env";
+import { clientEnv, isSupabaseConfigured } from "@/config/env";
 import type { Database } from "@/types/database";
 
 /**
@@ -13,6 +13,18 @@ import type { Database } from "@/types/database";
  * read another tenant's rows.
  */
 export async function createClient() {
+  // The Supabase client library's own message for missing credentials does not
+  // say WHERE the credentials are missing from. On a deployment whose
+  // environment variables were never set, that distinction is the whole
+  // diagnosis, so say it plainly in the server log.
+  if (!isSupabaseConfigured()) {
+    throw new Error(
+      "Supabase is not configured: NEXT_PUBLIC_SUPABASE_URL and " +
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY are missing from this environment. " +
+        "Set them on the deployment and redeploy.",
+    );
+  }
+
   const cookieStore = await cookies();
 
   return createServerClient<Database>(

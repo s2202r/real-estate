@@ -16,6 +16,7 @@ import { calculateListingCompleteness } from "@/lib/domain/scoring";
 import { assessDuplicate, DUPLICATE_REVIEW_THRESHOLD } from "@/lib/domain/duplicates";
 import { slugify } from "@/lib/utils";
 import type { ActionResult } from "./leads";
+import { serviceUnavailable } from "./guards";
 
 /**
  * Agent listing actions.
@@ -258,6 +259,9 @@ export async function saveListing(
 
 /** Submit an existing draft for moderation. */
 export async function submitListingForReview(listingId: string): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const user = await requireAgent();
   const supabase = await createClient();
 
@@ -292,6 +296,9 @@ export async function requestInventoryAccess(
   listingId: string,
   message?: string,
 ): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const user = await requireAgent();
 
   const parsed = ShareRequestSchema.safeParse({ listingId, message });

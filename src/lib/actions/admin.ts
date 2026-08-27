@@ -15,6 +15,7 @@ import {
 import { calculateTrustScore } from "@/lib/domain/scoring";
 import type { ActionResult } from "./leads";
 import type { Enums } from "@/types/database";
+import { serviceUnavailable } from "./guards";
 
 /**
  * Admin actions.
@@ -42,6 +43,9 @@ export async function moderateListing(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   let user;
   try {
     user = await requireCapability("listing.moderate");
@@ -237,6 +241,9 @@ export async function decideAgentVerification(
 
 /** Recompute an agent's trust score and award any badge they have earned. */
 export async function recomputeAgentStanding(agentId: string): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   let user;
   try {
     user = await requireCapability("agent.verify");
@@ -298,6 +305,9 @@ export async function resolveDuplicate(
   decision: "CONFIRMED_DUPLICATE" | "NOT_DUPLICATE",
   notes?: string,
 ): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   let user;
   try {
     user = await requireCapability("duplicate.review");
@@ -352,6 +362,9 @@ export async function resolveDuplicate(
  * ------------------------------------------------------------------------ */
 
 export async function runCommissionCalculation(dealId: string): Promise<ActionResult<{ pool: string }>> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   let user;
   try {
     user = await requireCapability("commission.calculate");
@@ -377,6 +390,9 @@ export async function runCommissionCalculation(dealId: string): Promise<ActionRe
 }
 
 export async function approveCommission(dealId: string): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   let user;
   try {
     user = await requireCapability("commission.approve");
@@ -402,6 +418,9 @@ export async function moderateReview(
   decision: "APPROVED" | "REJECTED",
   reason?: string,
 ): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   let user;
   try {
     user = await requireCapability("review.moderate");
@@ -439,6 +458,9 @@ export async function resolveDispute(
   decision: "RESOLVED" | "REJECTED" | "ESCALATED",
   resolution: string,
 ): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   let user;
   try {
     user = await requireCapability("dispute.manage");
@@ -506,6 +528,9 @@ export async function resolveDispute(
  * ------------------------------------------------------------------------ */
 
 export async function toggleFeatureFlag(key: string, enabled: boolean): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   let user;
   try {
     user = await requireCapability("feature.toggle");

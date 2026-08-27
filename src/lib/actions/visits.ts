@@ -11,6 +11,7 @@ import { qualifyVisit, DEFAULT_QUALIFICATION_RULES } from "@/lib/domain/attribut
 import { distanceKm } from "@/lib/domain/geo";
 import { platformLimits } from "@/config/app";
 import type { ActionResult } from "./leads";
+import { serviceUnavailable } from "./guards";
 
 /**
  * Visit marketplace.
@@ -248,6 +249,9 @@ async function offerVisitToAgents(
 
 /** An agent accepts an offered visit and becomes the visiting agent. */
 export async function acceptVisit(visitId: string): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const user = await getSessionUser();
   if (!user?.agentId) return { ok: false, message: "Only agents can accept visits." };
   if (!isAdminClientAvailable()) {
@@ -336,6 +340,9 @@ export async function acceptVisit(visitId: string): Promise<ActionResult> {
 }
 
 export async function declineVisit(visitId: string, reason?: string): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const user = await getSessionUser();
   if (!user?.agentId) return { ok: false, message: "Only agents can decline visits." };
   if (!isAdminClientAvailable()) {
@@ -610,6 +617,9 @@ export async function confirmVisitAsCustomer(
   visitId: string,
   didHappen: boolean,
 ): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const user = await getSessionUser();
   if (!user?.customerId) return { ok: false, message: "Sign in as a customer to confirm." };
 

@@ -4,10 +4,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/config/env";
 import { appConfig } from "@/config/app";
 import { getRateLimiter, rateLimitKey, clientIpFrom } from "@/lib/security/rate-limit";
 import { headers } from "next/headers";
 import type { ActionResult } from "./leads";
+import { serviceUnavailable } from "./guards";
 
 /**
  * Authentication actions.
@@ -51,6 +53,9 @@ export async function signIn(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const parsed = LoginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -95,6 +100,9 @@ export async function signUp(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
   const parsed = RegisterSchema.safeParse({
     fullName: formData.get("fullName"),
     email: formData.get("email"),
@@ -156,6 +164,10 @@ export async function signUp(
 }
 
 export async function signOut(): Promise<void> {
+  // Nothing to sign out of when there is no database; still send the visitor
+  // home rather than throwing a 500 at them.
+  if (!isSupabaseConfigured()) redirect("/");
+
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
