@@ -12,6 +12,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { earliestVisitDate, earliestVisitTimeOn } from "@/lib/domain/visits";
+import { appConfig, platformLimits } from "@/config/app";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,7 +133,20 @@ function VisitDialog({
     FormData
   >(requestVisit, null);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Mirror the server's lead-time rule in the picker: the same pure function
+  // runs in both places, so the form cannot offer a slot the action rejects.
+  // `now` is read once per open rather than per render — a value that drifts
+  // mid-form would move the minimum under the user's cursor.
+  const [now] = useState(() => new Date());
+  const leadHours = platformLimits.visitMinLeadTimeHours;
+  const earliestDate = earliestVisitDate(now, leadHours, appConfig.timezone);
+  const [visitDate, setVisitDate] = useState(earliestDate);
+  const earliestTime = earliestVisitTimeOn(visitDate, now, leadHours, appConfig.timezone);
+  // A late-afternoon viewing is the common preference; push it later only when
+  // the lead-time floor on the first available day demands it.
+  const preferredTime = "16:00";
+  const [visitTime, setVisitTime] = useState(preferredTime);
+  const effectiveTime = earliestTime && visitTime < earliestTime ? earliestTime : visitTime;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -188,6 +203,11 @@ function VisitDialog({
               </div>
             </fieldset>
 
+            <p className="text-xs text-muted-foreground">
+              Visits need at least {leadHours} hours&apos; notice, so the agent can confirm the
+              slot and reach the property.
+            </p>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="requestedDate">Preferred date</Label>
@@ -195,8 +215,9 @@ function VisitDialog({
                   id="requestedDate"
                   name="requestedDate"
                   type="date"
-                  min={today}
-                  defaultValue={today}
+                  min={earliestDate}
+                  value={visitDate}
+                  onChange={(event) => setVisitDate(event.target.value)}
                   required
                   aria-invalid={Boolean(state?.fieldErrors?.requestedDate)}
                 />
@@ -208,7 +229,11 @@ function VisitDialog({
                   id="requestedTime"
                   name="requestedTime"
                   type="time"
-                  defaultValue="16:00"
+                  // Only the first bookable day needs a floor; later days are
+                  // open from midnight.
+                  min={earliestTime ?? undefined}
+                  value={effectiveTime}
+                  onChange={(event) => setVisitTime(event.target.value)}
                   required
                   aria-invalid={Boolean(state?.fieldErrors?.requestedTime)}
                 />

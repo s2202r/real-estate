@@ -38,6 +38,8 @@ export const appConfig = {
  */
 export const platformLimits = {
   contactRevealDailyLimit: Number(process.env.CONTACT_REVEAL_DAILY_LIMIT ?? 25),
+  /** Minimum notice before a site visit, so an agent can confirm and travel. */
+  visitMinLeadTimeHours: Number(process.env.VISIT_MIN_LEAD_TIME_HOURS ?? 12),
   visitGeofenceRadiusMeters: Number(process.env.VISIT_GEOFENCE_RADIUS_METERS ?? 200),
   visitMinDurationMinutes: Number(process.env.VISIT_MIN_DURATION_MINUTES ?? 10),
   rateLimitWindowSeconds: Number(process.env.RATE_LIMIT_WINDOW_SECONDS ?? 60),

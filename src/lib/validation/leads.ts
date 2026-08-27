@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { checkVisitSlot } from "@/lib/domain/visits";
+import { appConfig, platformLimits } from "@/config/app";
 
 /**
  * Lead, enquiry and visit input schemas.
@@ -35,22 +37,32 @@ export const EnquirySchema = z.object({
 
 export type EnquiryInput = z.infer<typeof EnquirySchema>;
 
-export const VisitRequestSchema = z.object({
-  listingId: z.string().uuid(),
-  visitType: z.enum(["PHYSICAL", "VIRTUAL", "LIVE_VIDEO"]).default("PHYSICAL"),
-  requestedDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date.")
-    .refine((value) => {
-      // A visit cannot be booked in the past. Compared as calendar dates in the
-      // platform timezone rather than by timestamp, so "today" stays valid all day.
-      const today = new Date().toISOString().slice(0, 10);
-      return value >= today;
-    }, "Choose today or a future date."),
-  requestedTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Choose a time."),
-  notes: z.string().trim().max(500).optional(),
-  preferredAgentId: z.string().uuid().optional(),
-});
+export const VisitRequestSchema = z
+  .object({
+    listingId: z.string().uuid(),
+    visitType: z.enum(["PHYSICAL", "VIRTUAL", "LIVE_VIDEO"]).default("PHYSICAL"),
+    requestedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date."),
+    requestedTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Choose a time."),
+    notes: z.string().trim().max(500).optional(),
+    preferredAgentId: z.string().uuid().optional(),
+  })
+  // Date and time are checked TOGETHER: the rule is about an instant, not a
+  // calendar day. Checking the date alone would accept 9am today at 8:55am.
+  .superRefine((value, ctx) => {
+    const check = checkVisitSlot(
+      value.requestedDate,
+      value.requestedTime,
+      new Date(),
+      platformLimits.visitMinLeadTimeHours,
+      appConfig.timezone,
+    );
+    if (check.ok) return;
+
+    // Reported on both inputs, because either one can be the thing to change.
+    for (const path of ["requestedDate", "requestedTime"] as const) {
+      ctx.addIssue({ code: "custom", message: check.reason ?? "Choose a later slot.", path: [path] });
+    }
+  });
 
 export type VisitRequestInput = z.infer<typeof VisitRequestSchema>;
 
