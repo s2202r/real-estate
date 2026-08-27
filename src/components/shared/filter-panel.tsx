@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -290,17 +289,46 @@ export function FilterPanel({ localities = [], className }: FilterPanelProps) {
         {body}
       </aside>
 
-      {/* Mobile: a sheet, so filters never eat the results. */}
+      {/*
+        Mobile: a floating action button pinned bottom-right, opening the
+        filters as a sheet.
+
+        Why a FAB rather than a control in the header: on a phone the results
+        list is long, and an inline trigger scrolls away exactly when someone
+        decides to narrow the search. Pinning it keeps filtering one thumb-reach
+        away at any scroll position, and bottom-right is where the thumb already
+        is on a right-handed grip.
+
+        It sits above the safe-area inset so it clears the iOS home indicator,
+        and steps up its offset on the property detail page, which has its own
+        sticky enquiry bar.
+      */}
       <div className="lg:hidden">
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Filter aria-hidden />
-              Filters
+            <Button
+              size="lg"
+              className={cn(
+                "fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-30",
+                "h-14 rounded-full pl-5 pr-6 shadow-lg shadow-primary/25",
+                // Sits above the results, below any modal/overlay.
+                "transition-transform active:scale-95",
+              )}
+              aria-label={
+                activeCount > 0
+                  ? `Filters, ${activeCount} active`
+                  : "Filters"
+              }
+            >
+              <Filter className="size-5" aria-hidden />
+              <span className="text-base font-medium">Filters</span>
               {activeCount > 0 && (
-                <Badge variant="default" size="sm">
+                <span
+                  className="tabular ml-0.5 flex size-6 items-center justify-center rounded-full bg-primary-foreground text-xs font-semibold text-primary"
+                  aria-hidden
+                >
                   {activeCount}
-                </Badge>
+                </span>
               )}
             </Button>
           </DialogTrigger>

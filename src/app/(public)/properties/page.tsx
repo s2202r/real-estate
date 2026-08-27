@@ -38,7 +38,9 @@ export default async function PropertiesPage({
       : "Verified properties";
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    // Bottom padding on small screens keeps the last row of results, and the
+    // empty-state actions, clear of the fixed Filters button.
+    <div className="mx-auto max-w-7xl px-4 pb-28 pt-10 sm:px-6 lg:px-8 lg:pb-10">
       <header className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">{heading}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -58,9 +60,11 @@ export default async function PropertiesPage({
 
         <div className="min-w-0">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 lg:hidden">
-              <FilterPanel localities={localities} />
-            </div>
+            {/*
+              The mobile filter trigger is a fixed floating button rendered by
+              FilterPanel itself (once, from the sidebar slot above), so there is
+              no inline trigger here - a second instance would stack two FABs.
+            */}
             <div className="flex flex-wrap items-center gap-2">
               {filters.listingType && (
                 <Badge variant="secondary">

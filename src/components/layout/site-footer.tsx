@@ -27,7 +27,9 @@ export function SiteFooter() {
 
   return (
     <footer className="mt-20 border-t bg-muted/30">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      {/* Extra bottom room on small screens so a floating action button — the
+          Filters FAB on search pages — never sits on top of the disclaimer. */}
+      <div className="mx-auto max-w-7xl px-4 pb-28 pt-12 sm:px-6 lg:px-8 lg:pb-12">
         <div className="grid gap-10 md:grid-cols-4">
           <div className="md:col-span-1">
             <Link href="/" aria-label={`${appConfig.name} home`}>
