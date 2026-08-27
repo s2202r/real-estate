@@ -1,15 +1,9 @@
 import Link from "next/link";
-import { LayoutDashboard, LogIn, Menu, Search } from "lucide-react";
+import { LayoutDashboard, LogIn, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from "@/components/brand/logo";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { appConfig } from "@/config/app";
 import { getSessionUser } from "@/lib/auth/session";
 import { canViewNetworkGuide, defaultLandingPath } from "@/lib/auth/permissions";
@@ -78,32 +72,12 @@ export async function SiteHeader() {
             </>
           )}
 
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
-                <Menu />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-xs">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Logo size={26} />
-                </DialogTitle>
-              </DialogHeader>
-              <nav className="flex flex-col gap-1" aria-label="Mobile">
-                {navLinks.map((link) => (
-                  <Button key={link.href} asChild variant="ghost" className="justify-start">
-                    <Link href={link.href}>{link.label}</Link>
-                  </Button>
-                ))}
-                <Button asChild variant="ghost" className="justify-start">
-                  <Link href={user ? defaultLandingPath(user) : "/login"}>
-                    {user ? "Dashboard" : "Sign in"}
-                  </Link>
-                </Button>
-              </nav>
-            </DialogContent>
-          </Dialog>
+          <MobileNav
+            links={navLinks}
+            signedIn={user !== null}
+            accountHref={user ? defaultLandingPath(user) : "/login"}
+            accountLabel={user ? "Go to dashboard" : "Sign in"}
+          />
         </div>
       </div>
     </header>
