@@ -106,7 +106,10 @@ src/
     validation/        Zod schemas shared by forms, actions and API routes
 supabase/
   migrations/          13 SQL migrations: 70 tables, 147 RLS policies
+  schema.sql           all migrations concatenated, for the SQL-editor workflow
   seed.sql             demo data covering the full end-to-end scenario
+  seed-additional-inventory.sql   adds the wider inventory to an existing seed
+  reset.sql            DESTRUCTIVE: drops public so schema.sql can run again
   tests/               database security assertions
 ```
 

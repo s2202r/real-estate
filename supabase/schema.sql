@@ -23,6 +23,28 @@
 -- which also applies the seed) over this file — it tracks migration history.
 -- ===========================================================================
 
+-- ---------------------------------------------------------------------------
+-- Precondition check
+-- ---------------------------------------------------------------------------
+-- This file is not idempotent: it creates types, tables and policies outright.
+-- Running it twice fails with `ERROR: 42710: type "app_role" already exists`,
+-- which says nothing about what to do next. Say it here instead.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  if exists (
+    select 1 from pg_type t
+      join pg_namespace n on n.oid = t.typnamespace
+     where n.nspname = 'public' and t.typname = 'app_role'
+  ) then
+    raise exception using
+      message = 'This schema is already installed in this database.',
+      detail  = 'schema.sql creates types and tables outright; it cannot be applied on top of itself.',
+      hint    = 'If you only want demo data, run supabase/seed.sql. To rebuild from scratch, run supabase/reset.sql first — it DROPS the public schema and every row in it.';
+  end if;
+end $$;
+
+
 
 -- ===========================================================================
 
@@ -4009,10 +4031,12 @@ on conflict (id) do nothing;
 
 -- Public buckets: anyone may read; only authenticated users may write, and only
 -- into their own prefix.
+drop policy if exists "public buckets are readable" on storage.objects;
 create policy "public buckets are readable"
   on storage.objects for select
   using (bucket_id in ('property-media','avatars','marketing-assets'));
 
+drop policy if exists "authenticated upload to own prefix in public buckets" on storage.objects;
 create policy "authenticated upload to own prefix in public buckets"
   on storage.objects for insert to authenticated
   with check (
@@ -4020,6 +4044,7 @@ create policy "authenticated upload to own prefix in public buckets"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+drop policy if exists "owners update their public objects" on storage.objects;
 create policy "owners update their public objects"
   on storage.objects for update to authenticated
   using (
@@ -4027,6 +4052,7 @@ create policy "owners update their public objects"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+drop policy if exists "owners delete their public objects" on storage.objects;
 create policy "owners delete their public objects"
   on storage.objects for delete to authenticated
   using (
@@ -4035,6 +4061,7 @@ create policy "owners delete their public objects"
   );
 
 -- Private buckets: owner-only read, plus admin. No anonymous access at all.
+drop policy if exists "owners read their private objects" on storage.objects;
 create policy "owners read their private objects"
   on storage.objects for select to authenticated
   using (
@@ -4042,6 +4069,7 @@ create policy "owners read their private objects"
     and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
   );
 
+drop policy if exists "owners upload their private objects" on storage.objects;
 create policy "owners upload their private objects"
   on storage.objects for insert to authenticated
   with check (
@@ -4049,6 +4077,7 @@ create policy "owners upload their private objects"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+drop policy if exists "owners delete their private objects" on storage.objects;
 create policy "owners delete their private objects"
   on storage.objects for delete to authenticated
   using (
@@ -4058,6 +4087,7 @@ create policy "owners delete their private objects"
 
 -- Verification and finance admins need read access to review submitted
 -- documents; that access is audited in the application layer.
+drop policy if exists "verification admins read documents" on storage.objects;
 create policy "verification admins read documents"
   on storage.objects for select to authenticated
   using (

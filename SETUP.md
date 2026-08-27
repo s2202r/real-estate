@@ -190,10 +190,19 @@ meant to be tight.
 migrations have not been applied. Run `supabase db push`, or paste
 `supabase/schema.sql` into the SQL editor first.
 
-**`Demo data is already present in this database`.** The seed has run before and
-is not designed to run twice. Use `supabase db reset`, or delete the demo rows
-(`delete from auth.users where email like '%@demo.getmespace.test'`
-cascades to everything else).
+**`type "app_role" already exists` when running the schema.** `schema.sql`
+creates types and tables outright, so it cannot be applied on top of itself.
+Either the schema is already installed and you should skip to `seed.sql`, or
+you want to start over — run `supabase/reset.sql` first (it **drops the public
+schema and every row in it**), then `schema.sql`, then `seed.sql`.
+
+**`Demo data is already present in this database`.** The seed has run before
+and is not designed to run twice. You have two options:
+
+| You want | Run |
+| --- | --- |
+| The wider inventory added to what you already have | `supabase/seed-additional-inventory.sql` — 10 more agents, 60 passports, 90 listings, all at fresh identifiers. Nothing existing is touched. |
+| A clean rebuild | `supabase/reset.sql`, then `supabase/schema.sql`, then `supabase/seed.sql`. **Destructive** — every row goes. |
 
 **Seeded accounts exist but sign-in fails.** Check that `auth.identities` has a
 row per user and that `confirmation_token` / `recovery_token` are empty strings

@@ -32,10 +32,12 @@ on conflict (id) do nothing;
 
 -- Public buckets: anyone may read; only authenticated users may write, and only
 -- into their own prefix.
+drop policy if exists "public buckets are readable" on storage.objects;
 create policy "public buckets are readable"
   on storage.objects for select
   using (bucket_id in ('property-media','avatars','marketing-assets'));
 
+drop policy if exists "authenticated upload to own prefix in public buckets" on storage.objects;
 create policy "authenticated upload to own prefix in public buckets"
   on storage.objects for insert to authenticated
   with check (
@@ -43,6 +45,7 @@ create policy "authenticated upload to own prefix in public buckets"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+drop policy if exists "owners update their public objects" on storage.objects;
 create policy "owners update their public objects"
   on storage.objects for update to authenticated
   using (
@@ -50,6 +53,7 @@ create policy "owners update their public objects"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+drop policy if exists "owners delete their public objects" on storage.objects;
 create policy "owners delete their public objects"
   on storage.objects for delete to authenticated
   using (
@@ -58,6 +62,7 @@ create policy "owners delete their public objects"
   );
 
 -- Private buckets: owner-only read, plus admin. No anonymous access at all.
+drop policy if exists "owners read their private objects" on storage.objects;
 create policy "owners read their private objects"
   on storage.objects for select to authenticated
   using (
@@ -65,6 +70,7 @@ create policy "owners read their private objects"
     and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
   );
 
+drop policy if exists "owners upload their private objects" on storage.objects;
 create policy "owners upload their private objects"
   on storage.objects for insert to authenticated
   with check (
@@ -72,6 +78,7 @@ create policy "owners upload their private objects"
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+drop policy if exists "owners delete their private objects" on storage.objects;
 create policy "owners delete their private objects"
   on storage.objects for delete to authenticated
   using (
@@ -81,6 +88,7 @@ create policy "owners delete their private objects"
 
 -- Verification and finance admins need read access to review submitted
 -- documents; that access is audited in the application layer.
+drop policy if exists "verification admins read documents" on storage.objects;
 create policy "verification admins read documents"
   on storage.objects for select to authenticated
   using (

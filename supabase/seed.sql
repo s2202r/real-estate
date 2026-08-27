@@ -48,7 +48,7 @@ begin
     raise exception using
       message = 'Demo data is already present in this database.',
       detail  = 'seed.sql seeds fixed identifiers and is not designed to run twice.',
-      hint    = 'To reseed, run `supabase db reset`, or delete the existing demo rows first (every seeded profile has is_demo = true).';
+      hint    = 'To ADD the wider inventory to what you already have, run supabase/seed-additional-inventory.sql instead. To start over, run supabase/reset.sql (destructive), then supabase/schema.sql, then this file.';
   end if;
 end $$;
 
