@@ -137,8 +137,9 @@ are stored with the calculation.
 ```text
 Deal: DEAL-NCR-000456
 Transaction Value:      ₹1,10,00,000
-Policy:                 default-v1  (pool 4.55% → clamped)
-Commission Pool:        ₹5,00,000
+Policy:                 default-sale v1
+Commission Pool:        ₹5,00,000   (agreed manually for this deal, so the
+                                     policy's percentage formula is bypassed)
 
 Role split
   Listing Agent    20%  ₹1,00,000

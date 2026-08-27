@@ -1,0 +1,193 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   Design tokens
+   ==========================================================================
+   The palette is deliberately restrained: a deep slate-teal for trust, a
+   single emerald accent reserved for VERIFICATION, and amber reserved for
+   EXCLUSIVE inventory. Colour carries meaning here — verification and
+   exclusivity are the product's core claims, so they get dedicated hues that
+   are never used for decoration.
+   ========================================================================== */
+
+:root {
+  --radius: 0.7rem;
+
+  --background: oklch(0.995 0.002 240);
+  --foreground: oklch(0.21 0.02 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.02 250);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.02 250);
+
+  /* Deep teal-slate: confident, financial, not "portal blue". */
+  --primary: oklch(0.42 0.068 214);
+  --primary-foreground: oklch(0.99 0.005 210);
+
+  --secondary: oklch(0.965 0.006 240);
+  --secondary-foreground: oklch(0.3 0.025 250);
+
+  --muted: oklch(0.966 0.005 240);
+  --muted-foreground: oklch(0.53 0.018 250);
+
+  --accent: oklch(0.955 0.012 214);
+  --accent-foreground: oklch(0.33 0.045 214);
+
+  --destructive: oklch(0.58 0.19 27);
+  --destructive-foreground: oklch(0.99 0.005 27);
+
+  /* Semantic: verification and trust. */
+  --success: oklch(0.58 0.13 158);
+  --success-foreground: oklch(0.99 0.005 158);
+  --success-muted: oklch(0.955 0.032 158);
+
+  /* Semantic: exclusive inventory, pending states. */
+  --warning: oklch(0.72 0.15 72);
+  --warning-foreground: oklch(0.26 0.05 72);
+  --warning-muted: oklch(0.965 0.04 82);
+
+  --info: oklch(0.58 0.11 245);
+  --info-muted: oklch(0.96 0.025 245);
+
+  --border: oklch(0.915 0.008 245);
+  --input: oklch(0.915 0.008 245);
+  --ring: oklch(0.42 0.068 214);
+
+  --chart-1: oklch(0.42 0.068 214);
+  --chart-2: oklch(0.58 0.13 158);
+  --chart-3: oklch(0.72 0.15 72);
+  --chart-4: oklch(0.55 0.12 285);
+  --chart-5: oklch(0.62 0.14 20);
+}
+
+.dark {
+  --background: oklch(0.17 0.014 250);
+  --foreground: oklch(0.96 0.005 240);
+
+  --card: oklch(0.215 0.016 250);
+  --card-foreground: oklch(0.96 0.005 240);
+
+  --popover: oklch(0.215 0.016 250);
+  --popover-foreground: oklch(0.96 0.005 240);
+
+  --primary: oklch(0.72 0.09 200);
+  --primary-foreground: oklch(0.17 0.02 250);
+
+  --secondary: oklch(0.27 0.018 250);
+  --secondary-foreground: oklch(0.94 0.006 240);
+
+  --muted: oklch(0.27 0.018 250);
+  --muted-foreground: oklch(0.68 0.015 245);
+
+  --accent: oklch(0.3 0.03 210);
+  --accent-foreground: oklch(0.93 0.01 210);
+
+  --destructive: oklch(0.63 0.18 25);
+  --destructive-foreground: oklch(0.98 0.005 25);
+
+  --success: oklch(0.68 0.13 158);
+  --success-foreground: oklch(0.16 0.02 158);
+  --success-muted: oklch(0.28 0.05 158);
+
+  --warning: oklch(0.78 0.14 76);
+  --warning-foreground: oklch(0.2 0.04 76);
+  --warning-muted: oklch(0.3 0.055 76);
+
+  --info: oklch(0.68 0.1 245);
+  --info-muted: oklch(0.28 0.045 245);
+
+  --border: oklch(0.3 0.018 250);
+  --input: oklch(0.32 0.02 250);
+  --ring: oklch(0.72 0.09 200);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-info: var(--info);
+  --color-info-muted: var(--info-muted);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Tabular figures everywhere money or metrics appear: columns must align. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Subtle premium surface used for hero and section backdrops. */
+  .surface-gradient {
+    background-image:
+      radial-gradient(60rem 30rem at 15% -10%, color-mix(in oklch, var(--primary) 12%, transparent), transparent),
+      radial-gradient(45rem 25rem at 95% 0%, color-mix(in oklch, var(--success) 10%, transparent), transparent);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
