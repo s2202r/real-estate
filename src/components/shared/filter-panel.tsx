@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -274,7 +275,12 @@ export function FilterPanel({ localities = [], className }: FilterPanelProps) {
   );
 
   return (
-    <FilterShell activeCount={activeCount} onReset={reset} className={className}>
+    <FilterShell
+      activeCount={activeCount}
+      onReset={reset}
+      busy={isPending}
+      className={className}
+    >
       {body}
     </FilterShell>
   );
@@ -286,6 +292,7 @@ export function SortSelect() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [value, setValue] = useState(searchParams.get("sort") ?? "newest");
+  const [isPending, startTransition] = useTransition();
 
   const options = [
     { value: "newest", label: "Newest first" },
@@ -296,20 +303,27 @@ export function SortSelect() {
 
   return (
     <div className="flex items-center gap-2">
-      <Label htmlFor="sort" className="whitespace-nowrap text-xs text-muted-foreground">
+      <Label
+        htmlFor="sort"
+        className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
+      >
+        {isPending && <Loader2 className="size-3 animate-spin" aria-hidden />}
         Sort
       </Label>
       <select
         id="sort"
         value={value}
         onChange={(event) => {
-          setValue(event.target.value);
+          const sort = event.target.value;
+          setValue(sort);
           const next = new URLSearchParams(searchParams.toString());
-          next.set("sort", event.target.value);
+          next.set("sort", sort);
           next.delete("page");
-          router.push(`${pathname}?${next.toString()}`, { scroll: false });
+          startTransition(() => router.push(`${pathname}?${next.toString()}`, { scroll: false }));
         }}
-        className="h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        disabled={isPending}
+        aria-busy={isPending}
+        className="h-9 rounded-md border border-input bg-background px-2 text-sm transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

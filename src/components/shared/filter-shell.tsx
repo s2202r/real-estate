@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter, RotateCcw, X } from "lucide-react";
+import { Filter, Loader2, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -30,17 +30,20 @@ import { cn } from "@/lib/utils";
 export function FilterShell({
   activeCount,
   onReset,
+  busy = false,
   className,
   children,
 }: {
   activeCount: number;
   onReset: () => void;
+  /** True while the filtered results are being fetched. */
+  busy?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <>
-      <aside className={cn("hidden lg:block", className)} aria-label="Filters">
+      <aside className={cn("hidden lg:block", className)} aria-label="Filters" aria-busy={busy}>
         {children}
       </aside>
 
@@ -54,9 +57,22 @@ export function FilterShell({
                 "h-14 rounded-full pl-5 pr-6 shadow-lg shadow-primary/25",
                 "transition-transform active:scale-95",
               )}
-              aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : "Filters"}
+              aria-busy={busy}
+              aria-label={
+                busy
+                  ? "Updating results"
+                  : activeCount > 0
+                    ? `Filters, ${activeCount} active`
+                    : "Filters"
+              }
             >
-              <Filter className="size-5" aria-hidden />
+              {/* The results list sits behind a closed sheet on a phone, so the
+                  button itself has to carry the "working on it" signal. */}
+              {busy ? (
+                <Loader2 className="size-5 animate-spin" aria-hidden />
+              ) : (
+                <Filter className="size-5" aria-hidden />
+              )}
               <span className="text-base font-medium">Filters</span>
               {activeCount > 0 && (
                 <span

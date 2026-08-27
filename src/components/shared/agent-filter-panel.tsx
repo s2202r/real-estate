@@ -128,7 +128,12 @@ export function AgentFilterPanel({ className }: { className?: string }) {
   );
 
   return (
-    <FilterShell activeCount={activeCount} onReset={reset} className={className}>
+    <FilterShell
+      activeCount={activeCount}
+      onReset={reset}
+      busy={isPending}
+      className={className}
+    >
       {body}
     </FilterShell>
   );
