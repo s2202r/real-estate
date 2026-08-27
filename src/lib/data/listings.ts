@@ -88,7 +88,7 @@ export interface ListingSearchResult {
   readonly totalPages: number;
 }
 
-const LIST_COLUMNS = `
+export const LIST_COLUMNS = `
   id, reference_code, slug, title, listing_type, property_type, price, currency,
   bedrooms, bathrooms, built_up_area, carpet_area, floor, total_floors, facing,
   furnishing, possession_status, city, locality, state, latitude, longitude,
@@ -97,7 +97,7 @@ const LIST_COLUMNS = `
   property_passports ( reference_code )
 `;
 
-interface ListingRow {
+export interface ListingRow {
   id: string;
   reference_code: string;
   slug: string;
@@ -132,7 +132,16 @@ interface ListingRow {
   property_passports: { reference_code: string } | { reference_code: string }[] | null;
 }
 
-function toSummary(row: ListingRow): ListingSummary {
+/**
+ * The ONLY way a database row becomes a `ListingSummary`.
+ *
+ * Exported because a caller that hand-casts a raw row instead — the columns are
+ * snake_case, the type is camelCase — produces an object whose every renamed
+ * field is `undefined`. That is not a type error the compiler can catch through
+ * an `as unknown as` cast, and it surfaces as a crash in whatever first reads
+ * `referenceCode`.
+ */
+export function toListingSummary(row: ListingRow): ListingSummary {
   const passport = Array.isArray(row.property_passports)
     ? row.property_passports[0]
     : row.property_passports;
@@ -261,7 +270,7 @@ export async function searchListings(
     return { ...EMPTY_RESULT, page, pageSize };
   }
 
-  const listings = ((data ?? []) as unknown as ListingRow[]).map(toSummary);
+  const listings = ((data ?? []) as unknown as ListingRow[]).map(toListingSummary);
   const total = count ?? listings.length;
 
   return {
@@ -350,7 +359,7 @@ export async function getSimilarListings(listing: ListingSummary, limit = 4) {
     .lte("price", priceValue * 1.3)
     .limit(limit);
 
-  return ((data ?? []) as unknown as ListingRow[]).map(toSummary);
+  return ((data ?? []) as unknown as ListingRow[]).map(toListingSummary);
 }
 
 /** Comparable per-sq-ft prices, feeding price intelligence. */

@@ -4,6 +4,12 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import type { Enums } from "@/types/database";
+import {
+  LIST_COLUMNS,
+  toListingSummary,
+  type ListingRow,
+  type ListingSummary,
+} from "./listings";
 
 /**
  * Agent queries.
@@ -141,26 +147,21 @@ export const getAgentBySlug = cache(async (slug: string): Promise<PublicAgent | 
 });
 
 /** An agent's live inventory, for their public profile. */
-export async function getAgentListings(agentId: string, limit = 9) {
+export async function getAgentListings(agentId: string, limit = 9): Promise<ListingSummary[]> {
   if (!isSupabaseConfigured()) return [];
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("listings")
-    .select(
-      `id, reference_code, slug, title, listing_type, property_type, price, currency,
-       bedrooms, bathrooms, built_up_area, carpet_area, floor, total_floors, facing,
-       furnishing, possession_status, city, locality, state, latitude, longitude,
-       cover_image_url, virtual_tour_url, tour_360_url, youtube_url, is_exclusive,
-       verification_score, published_at, property_id, agent_id,
-       property_passports ( reference_code )`,
-    )
+    .select(LIST_COLUMNS)
     .eq("agent_id", agentId)
     .eq("status", "VERIFIED")
     .order("published_at", { ascending: false })
     .limit(limit);
 
-  return data ?? [];
+  // Through the shared mapper, never a cast: the rows are snake_case and
+  // ListingSummary is camelCase, so casting silently produces undefined fields.
+  return (data ?? []).map((row) => toListingSummary(row as unknown as ListingRow));
 }
 
 /** Approved public reviews of an agent. Pending ones are never shown. */

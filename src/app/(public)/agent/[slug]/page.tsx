@@ -13,7 +13,6 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { getAgentBySlug, getAgentListings, getAgentReviews } from "@/lib/data/agents";
 import { appConfig } from "@/config/app";
 import { initialsOf } from "@/lib/utils";
-import type { ListingSummary } from "@/lib/data/listings";
 
 export const revalidate = 900;
 
@@ -105,7 +104,7 @@ export default async function AgentProfilePage({ params }: PageProps) {
             </h2>
             <div className="mt-4">
               {listings.length > 0 ? (
-                <PropertyGrid listings={listings as unknown as ListingSummary[]} />
+                <PropertyGrid listings={listings} />
               ) : (
                 <EmptyState
                   icon={Building2}
