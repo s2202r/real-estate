@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { ListingSearchFilters, ListingSort } from "./listings";
+import type { AgentSearchFilters } from "./agents";
 import type { Enums } from "@/types/database";
+import { supportedCities } from "@/config/app";
 
 /**
  * Parse URL search params into typed listing filters.
@@ -54,6 +56,8 @@ const POSSESSIONS = [
   "READY_TO_MOVE", "UNDER_CONSTRUCTION", "NEW_LAUNCH", "RESALE",
 ] as const satisfies readonly Enums["possession_status"][];
 
+const SUPPORTED_CITY_NAMES: readonly string[] = supportedCities.map((city) => city.name);
+
 export function parseListingFilters(
   params: Record<string, string | string[] | undefined>,
 ): ListingSearchFilters {
@@ -84,6 +88,29 @@ export function parseListingFilters(
     withVirtualTour: first(params.tour) === "1",
     exclusiveOnly: first(params.exclusive) === "1",
     sort,
+    page: Math.max(1, Number(first(params.page) ?? 1) || 1),
+  };
+}
+
+/**
+ * Parse URL search params into typed agent-directory filters.
+ *
+ * Same discipline as the listing parser: a value the query cannot honour is
+ * dropped rather than passed through, so a crafted URL cannot reach the
+ * database with anything the panel could not have produced.
+ */
+export function parseAgentFilters(
+  params: Record<string, string | string[] | undefined>,
+): AgentSearchFilters {
+  const city = first(params.city)?.slice(0, 80) || undefined;
+
+  return {
+    // Only cities the platform is actually live in are accepted.
+    city: SUPPORTED_CITY_NAMES.includes(city ?? "") ? city : undefined,
+    locality: first(params.locality)?.slice(0, 80) || undefined,
+    language: first(params.language)?.slice(0, 40) || undefined,
+    propertyType: multi(params.specialisation, PROPERTY_TYPES, 1)?.[0],
+    verifiedOnly: first(params.rera) === "1",
     page: Math.max(1, Number(first(params.page) ?? 1) || 1),
   };
 }

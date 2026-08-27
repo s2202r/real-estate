@@ -2,20 +2,16 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Filter, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  CheckboxRow,
+  ClearFiltersButton,
+  FilterGroup,
+  FilterShell,
+} from "@/components/shared/filter-shell";
 import { cn } from "@/lib/utils";
 
 /**
@@ -273,110 +269,14 @@ export function FilterPanel({ localities = [], className }: FilterPanelProps) {
         </div>
       </FilterGroup>
 
-      {activeCount > 0 && (
-        <Button variant="ghost" size="sm" onClick={reset} className="w-full">
-          <RotateCcw aria-hidden />
-          Clear {activeCount} filter{activeCount === 1 ? "" : "s"}
-        </Button>
-      )}
+      <ClearFiltersButton activeCount={activeCount} onReset={reset} />
     </div>
   );
 
   return (
-    <>
-      {/* Desktop: a persistent rail. */}
-      <aside className={cn("hidden lg:block", className)} aria-label="Filters">
-        {body}
-      </aside>
-
-      {/*
-        Mobile: a floating action button pinned bottom-right, opening the
-        filters as a sheet.
-
-        Why a FAB rather than a control in the header: on a phone the results
-        list is long, and an inline trigger scrolls away exactly when someone
-        decides to narrow the search. Pinning it keeps filtering one thumb-reach
-        away at any scroll position, and bottom-right is where the thumb already
-        is on a right-handed grip.
-
-        It sits above the safe-area inset so it clears the iOS home indicator,
-        and steps up its offset on the property detail page, which has its own
-        sticky enquiry bar.
-      */}
-      <div className="lg:hidden">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              size="lg"
-              className={cn(
-                "fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-30",
-                "h-14 rounded-full pl-5 pr-6 shadow-lg shadow-primary/25",
-                // Sits above the results, below any modal/overlay.
-                "transition-transform active:scale-95",
-              )}
-              aria-label={
-                activeCount > 0
-                  ? `Filters, ${activeCount} active`
-                  : "Filters"
-              }
-            >
-              <Filter className="size-5" aria-hidden />
-              <span className="text-base font-medium">Filters</span>
-              {activeCount > 0 && (
-                <span
-                  className="tabular ml-0.5 flex size-6 items-center justify-center rounded-full bg-primary-foreground text-xs font-semibold text-primary"
-                  aria-hidden
-                >
-                  {activeCount}
-                </span>
-              )}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Filters</DialogTitle>
-            </DialogHeader>
-            {body}
-            <DialogFooter>
-              <Button variant="outline" onClick={reset}>
-                <X aria-hidden />
-                Clear all
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </>
-  );
-}
-
-function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <fieldset>
-      <legend className="mb-3 text-sm font-semibold">{title}</legend>
-      {children}
-    </fieldset>
-  );
-}
-
-function CheckboxRow({
-  id,
-  label,
-  checked,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  checked: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <Checkbox id={id} checked={checked} onCheckedChange={onChange} />
-      <Label htmlFor={id} className="cursor-pointer text-sm font-normal">
-        {label}
-      </Label>
-    </div>
+    <FilterShell activeCount={activeCount} onReset={reset} className={className}>
+      {body}
+    </FilterShell>
   );
 }
 

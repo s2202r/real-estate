@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { ArrowRight, MapPin, ShieldCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/shared/empty-state";
 import { VerificationBadgeList } from "@/components/shared/verification-badge";
+import { AgentFilterPanel } from "@/components/shared/agent-filter-panel";
+import { Pagination } from "@/components/shared/pagination";
 import { searchAgents } from "@/lib/data/agents";
-import { appConfig, supportedCities } from "@/config/app";
+import { parseAgentFilters } from "@/lib/data/filters";
+import { appConfig } from "@/config/app";
 import { initialsOf } from "@/lib/utils";
-
-export const revalidate = 900;
 
 export const metadata: Metadata = {
   title: "Verified agents",
@@ -26,122 +27,149 @@ export default async function AgentsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const city = typeof params.city === "string" ? params.city : undefined;
-  const page = Math.max(1, Number(params.page ?? 1) || 1);
+  const filters = parseAgentFilters(params);
+  const result = await searchAgents({ ...filters, pageSize: 24 });
 
-  const { agents, total } = await searchAgents({ city, page, pageSize: 24 });
+  const heading = filters.city ? `Verified agents in ${filters.city}` : "Verified agents";
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    // Bottom padding on small screens keeps the last card, and the empty-state
+    // actions, clear of the fixed Filters button.
+    <div className="mx-auto max-w-7xl px-4 pb-28 pt-10 sm:px-6 lg:px-8 lg:pb-14">
       <header className="max-w-3xl">
-        <h1 className="text-3xl font-bold tracking-tight">Verified agents</h1>
+        <Badge variant="success" size="lg">
+          <ShieldCheck aria-hidden />
+          Platform-granted badges
+        </Badge>
+        <h1 className="text-balance mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
+          {heading}
+        </h1>
         <p className="mt-3 text-muted-foreground">
-          Every agent on the network completes identity verification before they can list. RERA
-          registration and trust badges are granted by the platform after review — they cannot be
-          bought or self-claimed.
+          Every agent completes identity verification before they can list. RERA registration and
+          trust badges are granted by the platform after review — they cannot be bought or
+          self-claimed.
         </p>
       </header>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button asChild variant={city ? "outline" : "default"} size="sm">
-          <Link href="/agents">All cities</Link>
-        </Button>
-        {supportedCities.map((option) => (
-          <Button
-            key={option.slug}
-            asChild
-            variant={city === option.name ? "default" : "outline"}
-            size="sm"
-          >
-            <Link href={`/agents?city=${encodeURIComponent(option.name)}`}>{option.name}</Link>
-          </Button>
-        ))}
-      </div>
+      <div className="mt-10 grid gap-8 lg:grid-cols-[16rem_1fr]">
+        <AgentFilterPanel className="lg:sticky lg:top-24 lg:self-start" />
 
-      <p className="mt-6 text-sm text-muted-foreground">
-        {total.toLocaleString("en-IN")} {total === 1 ? "agent" : "agents"}
-        {city ? ` serving ${city}` : ""}
-      </p>
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">
+            {result.total.toLocaleString("en-IN")} {result.total === 1 ? "agent" : "agents"}
+            {filters.city ? ` serving ${filters.city}` : ""}
+            {filters.language ? `, speaking ${filters.language}` : ""}
+          </p>
 
-      {agents.length === 0 ? (
-        <EmptyState
-          className="mt-8"
-          icon={Users}
-          title="No agents listed yet"
-          description={
-            city
-              ? `No verified agents are serving ${city} yet.`
-              : "Verified agents will appear here once they complete onboarding."
-          }
-          action={
-            <Button asChild>
-              <Link href="/register?role=agent">Join as an agent</Link>
-            </Button>
-          }
-        />
-      ) : (
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {agents.map((agent) => (
-            <Card key={agent.id} className="transition-shadow hover:shadow-md">
-              <CardContent className="p-5">
-                <Link href={`/agent/${agent.slug}`} className="flex items-start gap-4">
-                  <Avatar className="size-12">
-                    {agent.avatarUrl && <AvatarImage src={agent.avatarUrl} alt="" />}
-                    <AvatarFallback>{initialsOf(agent.fullName)}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{agent.agencyName ?? agent.fullName}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {agent.headline ?? `${agent.experienceYears} years experience`}
-                    </p>
-                  </div>
-                </Link>
-
-                <div className="mt-4">
-                  <VerificationBadgeList badges={agent.badges} max={2} />
+          {result.agents.length === 0 ? (
+            <EmptyState
+              className="mt-6"
+              icon={Users}
+              title="No agents match these filters"
+              description={
+                filters.city
+                  ? `No verified agents are serving ${filters.city} with these criteria yet.`
+                  : "Verified agents appear here once they complete onboarding."
+              }
+              action={
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Button asChild variant="outline">
+                    <Link href="/agents">Clear filters</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href="/register?role=agent">Join as an agent</Link>
+                  </Button>
                 </div>
-
-                <dl className="mt-4 grid grid-cols-3 gap-2 border-t pt-3 text-center">
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Rating</dt>
-                    <dd className="tabular text-sm font-semibold">
-                      {agent.ratingCount > 0 ? agent.ratingAverage.toFixed(1) : "New"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Deals</dt>
-                    <dd className="tabular text-sm font-semibold">{agent.closedDealCount}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Experience</dt>
-                    <dd className="tabular text-sm font-semibold">{agent.experienceYears}y</dd>
-                  </div>
-                </dl>
-
-                {agent.serviceLocalities.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {agent.serviceLocalities.slice(0, 3).map((locality) => (
-                      <Badge key={locality} variant="muted" size="sm">
-                        {locality}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+              }
+            />
+          ) : (
+            <>
+              <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {result.agents.map((agent) => (
+                  <AgentCard key={agent.id} agent={agent} />
+                ))}
+              </div>
+              <Pagination
+                page={result.page}
+                totalPages={result.totalPages}
+                total={result.total}
+                pageSize={result.pageSize}
+              />
+            </>
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
 
-      {page > 1 && (
-        <div className="mt-8 flex justify-center">
-          <Button asChild variant="outline">
-            <Link href={`/agents?${city ? `city=${encodeURIComponent(city)}&` : ""}page=${page - 1}`}>
-              Previous page
-            </Link>
-          </Button>
+function AgentCard({
+  agent,
+}: {
+  agent: Awaited<ReturnType<typeof searchAgents>>["agents"][number];
+}) {
+  return (
+    <Card className="group relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg">
+      <CardContent className="flex h-full flex-col p-5">
+        {/* The whole card is the link target; the overlay keeps the markup a
+            single anchor rather than wrapping interactive children. */}
+        <Link href={`/agent/${agent.slug}`} className="absolute inset-0 z-10">
+          <span className="sr-only">{agent.agencyName ?? agent.fullName}</span>
+        </Link>
+
+        <div className="flex items-start gap-4">
+          <Avatar className="size-14 ring-2 ring-primary/10">
+            {agent.avatarUrl && <AvatarImage src={agent.avatarUrl} alt="" />}
+            <AvatarFallback className="text-base">{initialsOf(agent.fullName)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold group-hover:text-primary">
+              {agent.agencyName ?? agent.fullName}
+            </p>
+            <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+              {agent.headline ?? `${agent.experienceYears} years in the market`}
+            </p>
+          </div>
         </div>
-      )}
+
+        <div className="mt-4">
+          <VerificationBadgeList badges={agent.badges} max={2} />
+        </div>
+
+        <dl className="mt-4 grid grid-cols-3 divide-x rounded-lg border bg-muted/40 py-3 text-center">
+          <Stat
+            label="Rating"
+            value={agent.ratingCount > 0 ? agent.ratingAverage.toFixed(1) : "New"}
+          />
+          <Stat label="Deals" value={String(agent.closedDealCount)} />
+          <Stat label="Experience" value={`${agent.experienceYears}y`} />
+        </dl>
+
+        {agent.serviceLocalities.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1">
+            <MapPin className="size-3 text-muted-foreground" aria-hidden />
+            {agent.serviceLocalities.slice(0, 3).map((locality) => (
+              <Badge key={locality} variant="muted" size="sm">
+                {locality}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-auto pt-4 text-sm font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+          View profile
+          <ArrowRight className="ml-1 inline size-4" aria-hidden />
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="tabular text-sm font-semibold">{value}</dd>
     </div>
   );
 }
