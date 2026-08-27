@@ -1,4 +1,4 @@
-import { BadgeCheck, Fingerprint, MapPin, Users } from "lucide-react";
+import { BadgeCheck, CalendarCheck, Fingerprint, MapPin, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -6,21 +6,24 @@ import { cn } from "@/lib/utils";
 /**
  * The hero's visual.
  *
- * Rather than a stock photograph of a building, it shows the two things this
- * product has that a listing portal does not: a property passport that
- * accumulates history, and a commission split computed by a deterministic
- * engine. Both panels are labelled as examples — illustrative figures must
- * never be mistakable for a real property or a real payout.
+ * Rather than a stock photograph of a building, it shows what a customer gets:
+ * a property passport that accumulates history, and a site visit with a
+ * verified agent and a recorded check-in.
  *
- * It is decoration in the layout sense only, so it is hidden from assistive
- * technology: everything it says is stated in the copy beside it.
+ * Deliberately NOT the commission split. Who is paid what out of a
+ * transaction is information for the agents and investors it binds, not
+ * something to put in front of a customer looking for a home — the network
+ * guide that explains it is gated to those roles for the same reason.
+ *
+ * The panel is decoration in the layout sense, so it is hidden from assistive
+ * technology: everything it says is stated in the copy beside it. Figures are
+ * labelled as examples — they must never be mistakable for a real property.
  */
 
-const SPLIT = [
-  { role: "Listing agent", share: 45 },
-  { role: "Visiting agent", share: 25 },
-  { role: "Sourcing agent", share: 20 },
-  { role: "Platform", share: 10 },
+const VISIT_STEPS = [
+  { label: "Slot confirmed", detail: "Sat, 11:00 AM", done: true },
+  { label: "Verified agent assigned", detail: "RERA registered", done: true },
+  { label: "Check-in recorded on site", detail: "Location confirmed", done: false },
 ] as const;
 
 export function HeroShowcase({ className }: { className?: string }) {
@@ -63,39 +66,43 @@ export function HeroShowcase({ className }: { className?: string }) {
         </CardContent>
       </Card>
 
-      {/* Commission card, overlapped so the two read as one composition. */}
+      {/* Visit card, offset so the two read as one composition. */}
       <Card className="ml-6 mt-4 shadow-e3 sm:ml-10">
         <CardContent className="p-5">
           <div className="flex items-center justify-between gap-3">
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Users className="size-3.5 text-primary" />
-              Commission split
+              <CalendarCheck className="size-3.5 text-primary" />
+              Site visit
             </span>
             <Badge variant="muted" size="sm">
               Example
             </Badge>
           </div>
 
-          <ul className="mt-3 space-y-2">
-            {SPLIT.map((entry) => (
-              <li key={entry.role} className="flex items-center gap-3">
-                <span className="w-28 shrink-0 text-xs text-muted-foreground">{entry.role}</span>
-                <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                  <span
-                    className="block h-full rounded-full bg-primary"
-                    style={{ width: `${entry.share}%` }}
-                  />
+          <ol className="mt-4 space-y-3">
+            {VISIT_STEPS.map((step) => (
+              <li key={step.label} className="flex items-start gap-3">
+                <span
+                  className={cn(
+                    "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
+                    step.done
+                      ? "bg-success text-success-foreground"
+                      : "border-2 border-dashed border-muted-foreground/40",
+                  )}
+                >
+                  {step.done && <BadgeCheck className="size-3" />}
                 </span>
-                <span className="tabular w-9 text-right text-xs font-semibold">
-                  {entry.share}%
+                <span className="min-w-0">
+                  <span className="block text-xs font-medium leading-tight">{step.label}</span>
+                  <span className="block text-[0.7rem] text-muted-foreground">{step.detail}</span>
                 </span>
               </li>
             ))}
-          </ul>
+          </ol>
 
-          <p className="mt-4 border-t pt-3 text-[0.7rem] leading-relaxed text-muted-foreground">
-            Computed by a deterministic engine from the rates on the deal — never estimated, never
-            decided by a model.
+          <p className="mt-4 flex items-start gap-1.5 border-t pt-3 text-[0.7rem] leading-relaxed text-muted-foreground">
+            <ShieldCheck className="mt-px size-3.5 shrink-0 text-primary" />
+            Your number stays with the agent taking the visit. It is never released to the network.
           </p>
         </CardContent>
       </Card>
