@@ -1,7 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { appConfig } from "@/config/app";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+
+/**
+ * The brand typeface.
+ *
+ * `next/font` downloads and self-hosts the files at build time, so there is no
+ * request to a font CDN at runtime, no third-party cookie, and no layout shift
+ * — the metrics of the local fallback are adjusted to match. A variable weight
+ * range means one file covers body text through display headings.
+ */
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-brand",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(appConfig.url),
@@ -51,7 +66,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-IN" suppressHydrationWarning>
+    <html lang="en-IN" className={jakarta.variable} suppressHydrationWarning>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         <a
           href="#main"

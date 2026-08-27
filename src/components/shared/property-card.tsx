@@ -40,7 +40,7 @@ export function PropertyCard({
   return (
     <Card
       className={cn(
-        "group relative overflow-hidden transition-shadow hover:shadow-md focus-within:shadow-md",
+        "lift group relative overflow-hidden hover:border-primary/25 focus-within:shadow-e3",
         className,
       )}
     >
@@ -53,13 +53,20 @@ export function PropertyCard({
               fill
               priority={priority}
               sizes="(min-width: 1280px) 24rem, (min-width: 768px) 33vw, 100vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
             />
           ) : (
             <div className="flex size-full items-center justify-center">
               <Building2 className="size-10 text-muted-foreground/40" aria-hidden />
             </div>
           )}
+
+          {/* A short scrim under the top chips so a white facade behind them does
+              not swallow the verification badge. */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/25 to-transparent opacity-70"
+            aria-hidden
+          />
 
           <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
             <VerifiedListingBadge score={listing.verificationScore} />

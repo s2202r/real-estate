@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PropertyGrid } from "@/components/shared/property-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { HeroShowcase } from "@/components/marketing/hero-showcase";
 import { TrustStrip } from "@/components/shared/trust-strip";
 import { getFeaturedListings } from "@/lib/data/listings";
 import { appConfig, supportedCities } from "@/config/app";
@@ -67,19 +68,21 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="surface-gradient border-b">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+      <section className="surface-gradient relative isolate overflow-hidden border-b">
+        <div className="surface-grid absolute inset-0 -z-10" aria-hidden />
+
+        <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8 lg:py-28 xl:grid-cols-[minmax(0,1fr)_27rem]">
           <div className="max-w-3xl">
             <Badge variant="success" size="lg">
               <BadgeCheck aria-hidden />
               Verified inventory network
             </Badge>
 
-            <h1 className="text-balance mt-6 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="text-balance mt-6 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem]">
               Property, without the guesswork.
             </h1>
 
-            <p className="text-balance mt-5 max-w-2xl text-lg text-muted-foreground">
+            <p className="text-balance mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">
               {appConfig.name} is a verified inventory network. Agents collaborate on shared
               property passports, customers see only reviewed listings, and every contribution to a
               transaction is recorded and paid transparently.
@@ -95,7 +98,7 @@ export default async function HomePage() {
               </label>
               <div className="relative flex-1">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                   aria-hidden
                 />
                 <input
@@ -103,15 +106,15 @@ export default async function HomePage() {
                   name="q"
                   type="search"
                   placeholder="Try “3BHK in Noida Extension under 1.5 Cr”"
-                  className="h-12 w-full rounded-lg border border-input bg-background pl-10 pr-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="h-13 w-full rounded-xl border border-input bg-background/90 pl-11 pr-3 text-base shadow-e2 backdrop-blur transition-shadow placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
-              <Button type="submit" size="lg" className="h-12">
+              <Button type="submit" size="lg" className="h-13 rounded-xl px-8">
                 Search
               </Button>
             </form>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2">
+            <div className="mt-7 flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">Popular:</span>
               {supportedCities.slice(0, 5).map((city) => (
                 <Button key={city.slug} asChild variant="outline" size="sm">
@@ -123,6 +126,8 @@ export default async function HomePage() {
               ))}
             </div>
           </div>
+
+          <HeroShowcase className="hidden lg:block" />
         </div>
       </section>
 
@@ -132,7 +137,12 @@ export default async function HomePage() {
       {/* What makes it different */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
-          <h2 className="text-3xl font-bold tracking-tight">Built as infrastructure, not a noticeboard</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Why it is different
+          </p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+            Built as infrastructure, not a noticeboard
+          </h2>
           <p className="mt-3 text-muted-foreground">
             Most portals sell the same lead to five agents and leave the customer to sort it out.
             This platform models what actually happens in a transaction.
@@ -141,9 +151,9 @@ export default async function HomePage() {
 
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {DIFFERENTIATORS.map((item) => (
-            <Card key={item.title}>
+            <Card key={item.title} className="lift">
               <CardContent className="p-6">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-e1">
                   <item.icon className="size-5" aria-hidden />
                 </div>
                 <h3 className="mt-4 font-semibold">{item.title}</h3>
@@ -159,7 +169,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight">Recently verified</h2>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Recently verified</h2>
               <p className="mt-2 text-muted-foreground">
                 Reviewed by the platform before publication.
               </p>
@@ -193,10 +203,13 @@ export default async function HomePage() {
 
       {/* How it works */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-bold tracking-tight">How it works</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+          Three steps
+        </p>
+        <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">How it works</h2>
         <div className="mt-10 grid gap-8 md:grid-cols-3">
           {STEPS.map((item) => (
-            <div key={item.step}>
+            <div key={item.step} className="border-t-2 border-primary/20 pt-5">
               <span className="tabular text-sm font-semibold text-primary">{item.step}</span>
               <h3 className="mt-2 text-lg font-semibold">{item.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
