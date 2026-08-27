@@ -17,13 +17,19 @@ import { appConfig } from "@/config/app";
  * Colours are the design-system primary converted from OKLCH to sRGB. SVG in a
  * favicon context cannot read CSS custom properties, so they are literal here
  * by necessity; `scripts/brand-colors.py` regenerates them if the palette moves.
+ *
+ * The tile is painted with a flat fill, deliberately: a gradient needs a
+ * `<defs>` id, and any page rendering the mark twice (header + footer, or a
+ * responsive pair) would emit that id twice. `url(#id)` binds to whichever
+ * comes first in the document — and when that copy sits inside a `hidden`
+ * subtree, the visible mark paints nothing. A flat fill cannot collide, and at
+ * the sizes this renders (16–32px) the gradient was imperceptible anyway.
  */
 
 export const BRAND_COLORS = {
-  tileFrom: "#13676F",
-  tileTo: "#104A59",
-  /** For contexts that cannot render a gradient. */
+  /** The tile. Used by the UI mark, the favicon and the generated icons alike. */
   solid: "#115664",
+  glyph: "#FFFFFF",
 } as const;
 
 /** Shared so the favicon, apple icon and OG image cannot drift from the UI. */
@@ -35,7 +41,7 @@ export const LOGO_PATHS = {
 export function LogoMark({
   className,
   size = 32,
-  /** Render the tile in currentColor rather than the brand gradient. */
+  /** Render the tile in currentColor rather than the brand colour. */
   monochrome = false,
   title,
 }: {
@@ -44,9 +50,6 @@ export function LogoMark({
   monochrome?: boolean;
   title?: string;
 }) {
-  // Distinct gradient id per variant: two marks on one page must not collide.
-  const gradientId = `gms-tile-${monochrome ? "mono" : "brand"}`;
-
   return (
     <svg
       width={size}
@@ -59,30 +62,19 @@ export function LogoMark({
       aria-hidden={title ? undefined : true}
       className={className}
     >
-      {!monochrome && (
-        <defs>
-          <linearGradient
-            id={gradientId}
-            x1="0"
-            y1="0"
-            x2="32"
-            y2="32"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor={BRAND_COLORS.tileFrom} />
-            <stop offset="1" stopColor={BRAND_COLORS.tileTo} />
-          </linearGradient>
-        </defs>
-      )}
-
       <rect
         width="32"
         height="32"
         rx="7.5"
-        fill={monochrome ? "currentColor" : `url(#${gradientId})`}
+        fill={monochrome ? "currentColor" : BRAND_COLORS.solid}
       />
-      <path d={LOGO_PATHS.roof} fill="#FFFFFF" />
-      <path fillRule="evenodd" clipRule="evenodd" d={LOGO_PATHS.body} fill="#FFFFFF" />
+      <path d={LOGO_PATHS.roof} fill={BRAND_COLORS.glyph} />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d={LOGO_PATHS.body}
+        fill={BRAND_COLORS.glyph}
+      />
     </svg>
   );
 }

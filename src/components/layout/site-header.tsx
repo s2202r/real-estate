@@ -27,9 +27,9 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="shrink-0" aria-label={`${appConfig.name} home`}>
-          {/* Wordmark hides on the narrowest screens so the header never wraps. */}
-          <Logo size={32} showWordmark={false} className="sm:hidden" />
-          <Logo size={32} className="hidden sm:inline-flex" />
+          {/* One mark, not a responsive pair: the wordmark hides below `sm` so
+              the header never wraps, and the mark alone still identifies us. */}
+          <Logo size={32} wordmarkClassName="hidden text-lg sm:inline" />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
