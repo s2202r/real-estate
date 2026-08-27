@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import { appConfig } from "@/config/app";
 import { supportedCities } from "@/config/app";
 
@@ -30,11 +30,8 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid gap-10 md:grid-cols-4">
           <div className="md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 font-semibold">
-              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Building2 className="size-4" aria-hidden />
-              </span>
-              <span className="tracking-tight">{appConfig.name}</span>
+            <Link href="/" aria-label={`${appConfig.name} home`}>
+              <Logo size={32} />
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">{appConfig.tagline}.</p>
           </div>

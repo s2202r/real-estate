@@ -14,7 +14,7 @@
 --
 -- DEMO LOGIN: every seeded account uses the password below. Development only.
 --
---     email:    admin@demo.realestatenetwork.test   (also agent1..10@, customer1..5@)
+--     email:    admin@demo.getmespace.test   (also agent1..10@, customer1..5@)
 --     password: DemoPassword123!
 --
 -- PREREQUISITE: the migrations in supabase/migrations/ must already be applied.
@@ -60,10 +60,10 @@ begin;
 create or replace function pg_temp.demo_uuid(kind text, n integer)
 returns uuid language sql immutable as $$
   select (
-    substr(md5('real-estate-network:' || kind), 1, 8) || '-' ||
-    substr(md5('real-estate-network:' || kind), 9, 4) || '-4' ||
-    substr(md5('real-estate-network:' || kind), 14, 3) || '-8' ||
-    substr(md5('real-estate-network:' || kind), 18, 3) || '-' ||
+    substr(md5('getmespace:' || kind), 1, 8) || '-' ||
+    substr(md5('getmespace:' || kind), 9, 4) || '-4' ||
+    substr(md5('getmespace:' || kind), 14, 3) || '-8' ||
+    substr(md5('getmespace:' || kind), 18, 3) || '-' ||
     lpad(to_hex(n), 12, '0')
   )::uuid;
 $$;
@@ -141,7 +141,7 @@ $$;
 -- Admin
 select pg_temp.create_demo_user(
   pg_temp.demo_uuid('admin', 1),
-  'admin@demo.realestatenetwork.test',
+  'admin@demo.getmespace.test',
   '{"full_name":"[Demo] Platform Admin","role":"customer"}'::jsonb
 );
 
@@ -153,7 +153,7 @@ on conflict (user_id, role) do nothing;
 -- 10 agents across NCR, Mumbai, Bengaluru and Lucknow
 select pg_temp.create_demo_user(
   pg_temp.demo_uuid('agent', n),
-  'agent' || n || '@demo.realestatenetwork.test',
+  'agent' || n || '@demo.getmespace.test',
   jsonb_build_object(
     'full_name', '[Demo] ' || (array[
       'Rohit Sharma','Priya Nair','Amit Verma','Sneha Kulkarni','Imran Qureshi',
@@ -169,7 +169,7 @@ from generate_series(1, 10) n;
 -- 5 customers
 select pg_temp.create_demo_user(
   pg_temp.demo_uuid('customer', n),
-  'customer' || n || '@demo.realestatenetwork.test',
+  'customer' || n || '@demo.getmespace.test',
   jsonb_build_object(
     'full_name', '[Demo] ' || (array[
       'Rahul Mehta','Anjali Desai','Vikram Singh','Neha Bansal','Arjun Pillai'
@@ -183,7 +183,7 @@ from generate_series(1, 5) n;
 -- 2 investors
 select pg_temp.create_demo_user(
   pg_temp.demo_uuid('investor', n),
-  'investor' || n || '@demo.realestatenetwork.test',
+  'investor' || n || '@demo.getmespace.test',
   jsonb_build_object(
     'full_name', '[Demo] ' || (array['Sunil Agarwal','Meera Kapoor'])[n],
     'role', 'investor',
@@ -199,7 +199,7 @@ update public.profiles
        phone_verified_at = now(),
        consent_terms_at = now(),
        consent_privacy_at = now()
- where email like '%@demo.realestatenetwork.test';
+ where email like '%@demo.getmespace.test';
 
 -- ---------------------------------------------------------------------------
 -- Agent profiles: specialisation, service areas, verification standing

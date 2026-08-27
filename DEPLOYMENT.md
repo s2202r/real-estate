@@ -31,8 +31,8 @@ Target: **Vercel** (application) + **Supabase** (database, auth, storage).
    private buckets are **not** public.
 
 5. Configure Auth → URL Configuration:
-   - Site URL: `https://your-domain.com`
-   - Redirect URLs: `https://your-domain.com/auth/callback`
+   - Site URL: `https://getmespace.in`
+   - Redirect URLs: `https://getmespace.in/auth/callback`
    - Enable email confirmations for production.
 
 ---
@@ -92,9 +92,9 @@ npm run build      # production build
 ## 4 · Post-deploy verification
 
 ```bash
-curl https://your-domain.com/api/v1/health
-curl https://your-domain.com/robots.txt
-curl https://your-domain.com/sitemap.xml
+curl https://getmespace.in/api/v1/health
+curl https://getmespace.in/robots.txt
+curl https://getmespace.in/sitemap.xml
 ```
 
 Then manually confirm the trust boundary holds in production:

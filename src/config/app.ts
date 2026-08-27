@@ -6,7 +6,7 @@
  * so a deployment can be rebranded from environment configuration alone.
  */
 
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "Real Estate Network";
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "GetMeSpace";
 
 export const appConfig = {
   name: APP_NAME,
@@ -16,8 +16,8 @@ export const appConfig = {
     `${APP_NAME} is a verified property inventory network where customers, agents and ` +
     `investors collaborate through shared property passports, transparent site visits ` +
     `and an auditable commission engine.`,
-  url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@example.com",
+  url: process.env.NEXT_PUBLIC_APP_URL || "https://getmespace.in",
+  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@getmespace.in",
 
   locale: process.env.DEFAULT_LOCALE || "en-IN",
   currency: process.env.DEFAULT_CURRENCY || "INR",

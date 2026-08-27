@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Real Estate Network — consolidated schema
+-- GetMeSpace — consolidated schema
 -- ===========================================================================
 -- GENERATED FILE. Do not edit by hand.
 --

@@ -1,6 +1,6 @@
 # Architecture
 
-> Product working name: **Real Estate Network** (`APP_NAME`, configurable — see `src/config/app.ts`).
+> Product working name: **GetMeSpace** (`APP_NAME`, configurable — see `src/config/app.ts`).
 
 ## 0. Current repository state (as inspected)
 

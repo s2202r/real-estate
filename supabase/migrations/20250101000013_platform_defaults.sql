@@ -234,7 +234,7 @@ insert into public.admin_settings (key, value, category, label, description, is_
   ('listings.reverification_days', '30'::jsonb, 'listings', 'Re-verification interval (days)', 'How often a live listing must be re-confirmed by its agent.', false),
   ('duplicates.auto_flag_threshold', '75'::jsonb, 'moderation', 'Duplicate flag threshold',
      'Confidence at or above which a listing is queued for duplicate review. Never auto-merged.', false),
-  ('platform.support_email', '"support@example.com"'::jsonb, 'general', 'Support email', 'Shown in the footer and on error pages.', true),
+  ('platform.support_email', '"support@getmespace.in"'::jsonb, 'general', 'Support email', 'Shown in the footer and on error pages.', true),
   ('platform.grievance_officer', '{"name":"","email":"","phone":""}'::jsonb, 'legal', 'Grievance officer',
      'Required under the Consumer Protection (E-Commerce) Rules 2020 and IT Rules 2021. Must be completed before launch.', true)
 on conflict (key) do nothing;

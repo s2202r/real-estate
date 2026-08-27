@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, Building2, LogOut } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Logo } from "@/components/brand/logo";
 import { appConfig } from "@/config/app";
 import { signOut } from "@/lib/actions/auth";
 import { initialsOf } from "@/lib/utils";
@@ -52,11 +53,9 @@ export function DashboardShell({
     <div className="flex min-h-dvh flex-col bg-muted/20">
       <header className="sticky top-0 z-40 border-b bg-background">
         <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
-          <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold">
-            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Building2 className="size-3.5" aria-hidden />
-            </span>
-            <span className="hidden text-sm tracking-tight sm:inline">{appConfig.name}</span>
+          <Link href="/" className="shrink-0" aria-label={`${appConfig.name} home`}>
+            <Logo size={28} showWordmark={false} className="sm:hidden" />
+            <Logo size={28} wordmarkClassName="text-sm" className="hidden sm:inline-flex" />
           </Link>
 
           <div className="ml-auto flex items-center gap-2">

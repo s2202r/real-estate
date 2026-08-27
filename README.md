@@ -1,4 +1,4 @@
-# Real Estate Network
+# GetMeSpace
 
 > A verified real-estate **inventory network** — not another listing portal.
 > Customers, agents and investors collaborate around shared property passports,
@@ -59,7 +59,7 @@ npm run dev                    # http://localhost:3000
 and run it, then paste `supabase/seed.sql`. In that order — the seed only
 inserts data and fails on an empty database.
 
-Demo sign-in: `admin@demo.realestatenetwork.test` / `DemoPassword123!`
+Demo sign-in: `admin@demo.getmespace.test` / `DemoPassword123!`
 (also `agent1..10@` and `customer1..5@` at the same domain).
 
 Full instructions are in [SETUP.md](./SETUP.md).

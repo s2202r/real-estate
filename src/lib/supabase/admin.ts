@@ -34,7 +34,7 @@ export function createAdminClient() {
     SUPABASE_SERVICE_ROLE_KEY,
     {
       auth: { autoRefreshToken: false, persistSession: false },
-      global: { headers: { "x-application-name": "real-estate-network-admin" } },
+      global: { headers: { "x-application-name": "getmespace-admin" } },
     },
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, LayoutDashboard, LogIn, Menu, Search } from "lucide-react";
+import { LayoutDashboard, LogIn, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Logo } from "@/components/brand/logo";
 import { appConfig } from "@/config/app";
 import { getSessionUser } from "@/lib/auth/session";
 import { defaultLandingPath } from "@/lib/auth/permissions";
@@ -27,11 +28,10 @@ export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Building2 className="size-4" aria-hidden />
-          </span>
-          <span className="hidden tracking-tight sm:inline">{appConfig.name}</span>
+        <Link href="/" className="shrink-0" aria-label={`${appConfig.name} home`}>
+          {/* Wordmark hides on the narrowest screens so the header never wraps. */}
+          <Logo size={32} showWordmark={false} className="sm:hidden" />
+          <Logo size={32} className="hidden sm:inline-flex" />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
@@ -82,7 +82,9 @@ export async function SiteHeader() {
             </DialogTrigger>
             <DialogContent className="max-w-xs">
               <DialogHeader>
-                <DialogTitle>{appConfig.name}</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <Logo size={26} />
+                </DialogTitle>
               </DialogHeader>
               <nav className="flex flex-col gap-1" aria-label="Mobile">
                 {NAV_LINKS.map((link) => (

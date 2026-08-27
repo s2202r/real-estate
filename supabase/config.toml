@@ -1,6 +1,6 @@
 # Supabase local development configuration.
 # Docs: https://supabase.com/docs/guides/local-development/cli/config
-project_id = "real-estate-network"
+project_id = "getmespace"
 
 [api]
 enabled = true
