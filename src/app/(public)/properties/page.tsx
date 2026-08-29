@@ -12,6 +12,8 @@ import { Pagination } from "@/components/shared/pagination";
 import { getLocalities, searchListings } from "@/lib/data/listings";
 import { parseListingFilters } from "@/lib/data/filters";
 import { resolveSearchIntent } from "@/lib/data/search-intent";
+import { applyScope } from "@/lib/location/scope";
+import { getLocationScope } from "@/lib/location/server";
 import { appConfig } from "@/config/app";
 
 export const metadata: Metadata = {
@@ -29,7 +31,10 @@ export default async function PropertiesPage({
   const resolved = await searchParams;
   // A typed sentence becomes filters here, not only when someone clicks
   // "Understand my query" — pressing Enter has to work.
-  const parsedFilters = parseListingFilters(resolved);
+  // The URL wins over the site-wide scope: a shared link must mean the same
+  // thing for whoever opens it, whatever they picked in the header.
+  const scope = await getLocationScope();
+  const parsedFilters = applyScope(parseListingFilters(resolved), scope);
   // `exact=1` is the escape hatch the interpretation line offers: match the
   // words as typed and infer nothing.
   const { filters, interpretation } =

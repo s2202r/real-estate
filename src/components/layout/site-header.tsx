@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Logo } from "@/components/brand/logo";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { LocationPicker } from "@/components/layout/location-picker";
+import { supportedCities } from "@/config/app";
+import { describeScope } from "@/lib/location/scope";
+import { getLocationScope } from "@/lib/location/server";
+import { getLocalitiesForCity, searchProjects } from "@/lib/data/places";
 import { appConfig } from "@/config/app";
 import { getSessionUser } from "@/lib/auth/session";
 import { canViewNetworkGuide, defaultLandingPath } from "@/lib/auth/permissions";
@@ -19,9 +24,15 @@ const NAV_LINKS = [
 const NETWORK_LINK = { href: "/how-it-works", label: "How it works" } as const;
 
 export async function SiteHeader() {
-  const user = await getSessionUser();
+  const [user, scope] = await Promise.all([getSessionUser(), getLocationScope()]);
   const navLinks =
     user && canViewNetworkGuide(user) ? [...NAV_LINKS, NETWORK_LINK] : [...NAV_LINKS];
+
+  // Only fetched once a city is chosen: there is no useful locality or project
+  // list for "everywhere", and this runs on every page.
+  const [localities, projects] = scope.city
+    ? await Promise.all([getLocalitiesForCity(scope.city), searchProjects(scope.city)])
+    : [[], []];
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -31,6 +42,14 @@ export async function SiteHeader() {
               the header never wraps, and the mark alone still identifies us. */}
           <Logo size={32} wordmarkClassName="hidden text-lg sm:inline" />
         </Link>
+
+        <LocationPicker
+          scope={scope}
+          cities={supportedCities.map((city) => ({ name: city.name, state: city.state }))}
+          localities={localities}
+          projects={projects}
+          label={describeScope(scope)}
+        />
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
           {navLinks.map((link) => (

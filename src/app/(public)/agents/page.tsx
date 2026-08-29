@@ -11,6 +11,7 @@ import { AgentFilterPanel } from "@/components/shared/agent-filter-panel";
 import { Pagination } from "@/components/shared/pagination";
 import { searchAgents } from "@/lib/data/agents";
 import { parseAgentFilters } from "@/lib/data/filters";
+import { getLocationScope } from "@/lib/location/server";
 import { appConfig } from "@/config/app";
 import { initialsOf } from "@/lib/utils";
 
@@ -27,7 +28,11 @@ export default async function AgentsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const filters = parseAgentFilters(params);
+  const scope = await getLocationScope();
+  const parsed = parseAgentFilters(params);
+  // A locality or project narrows the city it belongs to; the agent directory
+  // works at city level, so only the city carries over.
+  const filters = parsed.city ? parsed : { ...parsed, ...(scope.city ? { city: scope.city } : {}) };
   const result = await searchAgents({ ...filters, pageSize: 24 });
 
   const heading = filters.city ? `Verified agents in ${filters.city}` : "Verified agents";

@@ -25,6 +25,8 @@ export interface ListingSearchFilters {
   readonly query?: string;
   readonly city?: string;
   readonly locality?: string;
+  /** A project id from `projects`. Filters through the property passport. */
+  readonly projectId?: string;
   readonly listingType?: Enums["listing_type"];
   readonly propertyTypes?: readonly Enums["property_type"][];
   readonly priceMin?: number;
@@ -96,6 +98,20 @@ export const LIST_COLUMNS = `
   cover_image_url, virtual_tour_url, tour_360_url, youtube_url, is_exclusive,
   verification_score, published_at, property_id, agent_id,
   property_passports ( reference_code )
+`;
+
+/**
+ * The same columns with an inner join on the passport, for filtering by
+ * project. Spelled out rather than derived: supabase-js infers row types from
+ * a literal column string, and a computed one collapses to `unknown`.
+ */
+const LIST_COLUMNS_BY_PROJECT = `
+  id, reference_code, slug, title, listing_type, property_type, price, currency,
+  bedrooms, bathrooms, built_up_area, carpet_area, floor, total_floors, facing,
+  furnishing, possession_status, city, locality, state, latitude, longitude,
+  cover_image_url, virtual_tour_url, tour_360_url, youtube_url, is_exclusive,
+  verification_score, published_at, property_id, agent_id,
+  property_passports!inner ( reference_code, project_id )
 `;
 
 export interface ListingRow {
@@ -201,10 +217,18 @@ export async function searchListings(
   const supabase = await createClient();
   let request = supabase
     .from("listings")
-    .select(LIST_COLUMNS, { count: "exact" })
+    // A project lives on the passport, not the listing, so filtering by one
+    // needs an INNER join: with the default embed PostgREST filters the
+    // embedded rows and still returns every listing, and the filter would
+    // appear to do nothing.
+    .select(filters.projectId ? LIST_COLUMNS_BY_PROJECT : LIST_COLUMNS, { count: "exact" })
     // RLS already hides everything else; this makes the intent explicit and
     // stops an agent's own drafts appearing in the public search.
     .eq("status", "VERIFIED");
+
+  if (filters.projectId) {
+    request = request.eq("property_passports.project_id", filters.projectId);
+  }
 
   if (filters.city) request = request.eq("city", filters.city);
   if (filters.locality) request = request.eq("locality", filters.locality);
@@ -416,7 +440,19 @@ export const getLocalities = cache(async (city: string): Promise<string[]> => {
 });
 
 /** Featured listings for the home page. */
-export async function getFeaturedListings(limit = 6): Promise<ListingSummary[]> {
-  const result = await searchListings({ sort: "newest", pageSize: limit });
-  return [...result.listings];
+export async function getFeaturedListings(
+  limit = 6,
+  scope: { city?: string; locality?: string; projectId?: string } = {},
+): Promise<ListingSummary[]> {
+  const result = await searchListings({ ...scope, sort: "newest", pageSize: limit });
+  if (result.listings.length > 0) return [...result.listings];
+
+  // A scope with nothing published in it should not leave the home page empty:
+  // fall back to the national feed rather than showing a blank shelf.
+  if (scope.city || scope.projectId) {
+    const national = await searchListings({ sort: "newest", pageSize: limit });
+    return [...national.listings];
+  }
+
+  return [];
 }

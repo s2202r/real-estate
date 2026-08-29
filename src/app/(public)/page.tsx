@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { HeroShowcase } from "@/components/marketing/hero-showcase";
 import { TrustStrip } from "@/components/shared/trust-strip";
 import { getFeaturedListings } from "@/lib/data/listings";
+import { getLocationScope } from "@/lib/location/server";
 import { appConfig, supportedCities } from "@/config/app";
 
 export const revalidate = 300;
@@ -63,7 +64,8 @@ const STEPS = [
 ] as const;
 
 export default async function HomePage() {
-  const featured = await getFeaturedListings(6);
+  const scope = await getLocationScope();
+  const featured = await getFeaturedListings(6, scope);
 
   return (
     <>

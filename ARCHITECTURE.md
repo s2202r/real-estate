@@ -245,3 +245,31 @@ listing that has since been suspended.
 
 Bumping `VERSION` in `public/sw.js` invalidates every cache it owns; the
 worker deletes caches it no longer recognises on activate.
+
+---
+
+## Site-wide location
+
+The header carries a city -> locality -> project selector whose choice applies
+across the site: search, the agent directory and the home page's featured
+inventory all read it.
+
+It lives in a cookie (`gms_location`), not the URL, because the choice outlives
+any one page — someone who picks Noida expects the agent directory to be about
+Noida too. `lib/location/scope.ts` holds the pure logic (validation,
+precedence, labelling) so the client picker and the server pages share one
+definition; `lib/location/server.ts` reads the cookie.
+
+Two rules matter:
+
+- **The URL wins.** `/properties?city=Mumbai` shows Mumbai whatever the header
+  says, so a shared link cannot mean different things to different people. The
+  scope only fills in what the URL left unsaid.
+- **The cookie is user input.** It is validated exactly like a query string:
+  the city must be one the platform serves, a locality without a city is
+  dropped, a project id must look like a uuid, and free text is length-capped
+  before it reaches a query.
+
+Projects filter through the property passport, which is where `project_id`
+lives, so that query uses an inner join — with the default embed PostgREST
+filters the embedded rows and returns every listing regardless.
