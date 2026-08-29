@@ -185,9 +185,10 @@ export default async function AdminOverviewPage() {
           <>
             {" "}
             This database still holds rows planted by <code className="font-mono">seed.sql</code>;
-            every card that includes some says how many. Clearing them is{" "}
-            <code className="font-mono">supabase db reset</code> without the seed, or deleting where{" "}
-            <code className="font-mono">is_demo</code> is true.
+            every card that includes some says how many. To clear them, run{" "}
+            <code className="font-mono">supabase/remove-demo-data.sql</code> — it deletes only rows
+            flagged <code className="font-mono">is_demo</code>, keeps your administrator account,
+            and leaves real data untouched.
           </>
         )}
       </p>
