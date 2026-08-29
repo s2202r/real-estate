@@ -110,6 +110,7 @@ supabase/
   seed.sql             demo data covering the full end-to-end scenario
   seed-additional-inventory.sql   adds the wider inventory to an existing seed
   reset.sql            DESTRUCTIVE: drops public so schema.sql can run again
+  repair-missing-profiles.sql   rebuilds profiles for auth accounts missing one
   tests/               database security assertions
 ```
 

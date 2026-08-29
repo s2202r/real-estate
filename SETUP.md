@@ -191,6 +191,17 @@ meant to be tight.
 migrations have not been applied. Run `supabase db push`, or paste
 `supabase/schema.sql` into the SQL editor first.
 
+**`user_roles ... violates foreign key constraint "user_roles_user_id_fkey"`,
+or a signed-in account is denied every area and shows its email prefix as its
+name.** The account exists in `auth.users` but has no row in `public.profiles`,
+which everything else references. Profiles are created by the
+`on_auth_user_created` trigger, so an account created while that trigger did
+not exist — an early seed run against a database without the schema, a manual
+insert, a partial restore — has an auth identity and nothing else. Run
+`supabase/repair-missing-profiles.sql`: it creates exactly what the trigger
+would have, for every account missing it, and grants the admin role at the
+bottom (change the email first). Safe to run more than once.
+
 **`type "app_role" already exists` when running the schema.** `schema.sql`
 creates types and tables outright, so it cannot be applied on top of itself.
 Either the schema is already installed and you should skip to `seed.sql`, or
