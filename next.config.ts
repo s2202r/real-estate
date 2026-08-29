@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { frameSrcValue } from "./src/config/embeds";
 
 /**
  * Content Security Policy.
@@ -30,7 +31,9 @@ const csp = [
   }`,
   `media-src 'self' blob:${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
   `connect-src 'self' https://maps.googleapis.com${supabaseOrigin ? ` ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}` : ""}`,
-  `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com`,
+  // Built from src/config/embeds.ts, which the gallery also checks against:
+  // a frame the UI is willing to render must be one the policy allows.
+  `frame-src ${frameSrcValue()}`,
   // The service worker and the manifest are same-origin; `default-src`
   // would already cover them, but a CSP that states its intent is easier
   // to review than one that relies on a fallback.

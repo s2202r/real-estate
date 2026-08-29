@@ -466,8 +466,11 @@ begin
         (array['1560448204-e02f11c3d0e2','1502672260266-1c1ef2d93688','1512917774080-9991f1c4c750',
                '1493809842364-78817add7ffb','1522708323590-d24dbb6b0267','1567496898669-ee935f5f647a'])[1 + (n % 6)]
         || '?auto=format&fit=crop&w=1600&q=70',
+      case when n % 7 = 0 then 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' else null end,
+      -- No placeholder tour URL: example.com cannot be embedded, so it would
+      -- render as "this content is blocked" or a dead link. Demo media comes
+      -- from youtube_url above, which is on the embed allowlist.
       null,
-      case when n % 9 = 0 then 'https://example.com/demo-virtual-tour' else null end,
       true,
       now() - interval '9 days',
       case when status = 'VERIFIED' then pg_temp.demo_uuid('admin', 1) else null end,

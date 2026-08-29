@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Building2, ChevronLeft, ChevronRight, Expand, Play } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, Expand, ExternalLink, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { isEmbeddable } from "@/config/embeds";
 
 export interface GalleryItem {
   readonly id: string;
@@ -171,13 +172,32 @@ export function PropertyGallery({
               />
             ) : active.type === "VIDEO" ? (
               <video src={active.url} controls playsInline className="size-full" />
-            ) : (
+            ) : isEmbeddable(active.url) ? (
               <iframe
                 src={active.url}
                 title={active.caption ?? "Virtual tour"}
                 allowFullScreen
                 className="size-full"
               />
+            ) : (
+              // Not an allowlisted host, so the browser would refuse the frame
+              // and show "This content is blocked" with no way through. Offer
+              // the tour where it actually lives instead.
+              <div className="flex size-full flex-col items-center justify-center gap-4 bg-muted p-8 text-center">
+                <ExternalLink className="size-8 text-muted-foreground" aria-hidden />
+                <div>
+                  <p className="font-medium">This tour opens on the provider&apos;s site</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    It is hosted somewhere this page cannot embed safely.
+                  </p>
+                </div>
+                <Button asChild>
+                  <a href={active.url} target="_blank" rel="noopener noreferrer">
+                    Open the virtual tour
+                    <ExternalLink aria-hidden />
+                  </a>
+                </Button>
+              </div>
             )}
           </div>
           {active.caption && (
