@@ -10,8 +10,17 @@ import { z } from "zod";
  *    a function rather than a module constant so that importing this file from
  *    a client component cannot throw or leak.
  *
- * Values are validated rather than trusted: a malformed SUPABASE_URL should
- * fail loudly at boot, not produce a confusing runtime error later.
+ * VALIDATION NEVER THROWS. It used to: a `parse()` at module scope meant one
+ * malformed variable — a URL pasted without its `https://` — raised at import
+ * time, before any route could load. The result was a bare
+ * `500 Internal Server Error` with no body, no digest and no error boundary,
+ * on every page of the site, from one typo in a dashboard.
+ *
+ * A misconfigured deployment must degrade, not disappear. Bad values are
+ * dropped (the app then behaves exactly as it does when that integration is
+ * absent), the reason is logged once per variable, and `configWarnings()`
+ * reports it through the health endpoint so the problem is findable without
+ * reading a server log.
  */
 
 const clientSchema = z.object({
@@ -41,17 +50,84 @@ const serverSchema = z.object({
 export type ClientEnv = z.infer<typeof clientSchema>;
 export type ServerEnv = z.infer<typeof serverSchema>;
 
+/** Variable name → what is wrong with it. Values are never recorded. */
+const warnings = new Map<string, string>();
+
+function warn(variable: string, problem: string): void {
+  if (warnings.has(variable)) return;
+  warnings.set(variable, problem);
+  // Server-side only: in the browser this would be noise the visitor cannot act on.
+  if (typeof window === "undefined") {
+    console.warn(`[config] ${variable}: ${problem}`);
+  }
+}
+
+/**
+ * Normalise a URL-shaped variable before validation.
+ *
+ * Two mistakes account for nearly every broken deployment, and both are
+ * unambiguous enough to correct rather than reject:
+ *
+ *  - Surrounding whitespace, from copying out of a dashboard.
+ *  - A missing scheme ("getmespace.in"). There is no plausible reading of that
+ *    other than https, and the alternative is an offline site.
+ *
+ * Anything still unparseable is dropped, not guessed at.
+ */
+export function normaliseUrl(raw: string | undefined, variable: string): string {
+  const value = raw?.trim();
+  if (!value) return "";
+
+  const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`;
+  if (candidate !== value) {
+    warn(variable, `no scheme, read as ${candidate.split("://")[0]}://`);
+  }
+
+  try {
+    const url = new URL(candidate);
+    // A trailing slash here becomes a double slash in every canonical URL and
+    // OG tag built from it.
+    return url.origin + url.pathname.replace(/\/$/, "") + url.search;
+  } catch {
+    warn(variable, "is not a valid URL and has been ignored");
+    return "";
+  }
+}
+
+function readClientEnv(): ClientEnv {
+  const candidate = {
+    NEXT_PUBLIC_SUPABASE_URL: normaliseUrl(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      "NEXT_PUBLIC_SUPABASE_URL",
+    ),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "",
+    NEXT_PUBLIC_APP_URL: normaliseUrl(process.env.NEXT_PUBLIC_APP_URL, "NEXT_PUBLIC_APP_URL"),
+    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+  };
+
+  const parsed = clientSchema.safeParse(candidate);
+  if (parsed.success) return parsed.data;
+
+  // Should be unreachable after normalisation, but a schema change must never
+  // be able to take the site down. Drop the offending fields and carry on.
+  for (const issue of parsed.error.issues) {
+    warn(String(issue.path[0] ?? "unknown"), `${issue.message}; ignored`);
+  }
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: "",
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
+    NEXT_PUBLIC_APP_URL: "",
+    NEXT_PUBLIC_APP_NAME: candidate.NEXT_PUBLIC_APP_NAME,
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: candidate.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+  };
+}
+
 /**
  * Public configuration. Referenced with literal `process.env.X` keys so that
  * the Next.js compiler can inline them into the client bundle.
  */
-export const clientEnv: ClientEnv = clientSchema.parse({
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? "",
-  NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
-  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-});
+export const clientEnv: ClientEnv = readClientEnv();
 
 let cachedServerEnv: ServerEnv | null = null;
 
@@ -59,10 +135,30 @@ export function getServerEnv(): ServerEnv {
   if (typeof window !== "undefined") {
     throw new Error("getServerEnv() must never be called in the browser.");
   }
+
   if (!cachedServerEnv) {
-    cachedServerEnv = serverSchema.parse(process.env);
+    const parsed = serverSchema.safeParse(process.env);
+    if (parsed.success) {
+      cachedServerEnv = parsed.data;
+    } else {
+      // One bad provider name should disable that provider, not the platform.
+      for (const issue of parsed.error.issues) {
+        warn(String(issue.path[0] ?? "unknown"), `${issue.message}; using the default`);
+      }
+      cachedServerEnv = serverSchema.parse({});
+    }
   }
+
   return cachedServerEnv;
+}
+
+/**
+ * Every environment variable found to be misconfigured, as
+ * `{ variable, problem }`. Names and problems only — never values, which is
+ * what makes it safe to surface through the health endpoint.
+ */
+export function configWarnings(): { variable: string; problem: string }[] {
+  return [...warnings.entries()].map(([variable, problem]) => ({ variable, problem }));
 }
 
 /**
@@ -71,7 +167,5 @@ export function getServerEnv(): ServerEnv {
  * database is wired up), so callers can degrade gracefully instead of crashing.
  */
 export function isSupabaseConfigured(): boolean {
-  return Boolean(
-    clientEnv.NEXT_PUBLIC_SUPABASE_URL && clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+  return Boolean(clientEnv.NEXT_PUBLIC_SUPABASE_URL && clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
