@@ -30,7 +30,13 @@ async function requireCapability(capability: Capability) {
   const user = await requireUserOrThrow();
   assertCan(user, capability);
   if (!isAdminClientAvailable()) {
-    throw new Error("Administrative operations are unavailable in this environment.");
+    // Name the variable. The previous wording ("unavailable in this
+    // environment") told an administrator nothing they could act on, and the
+    // cause is nearly always this one missing value on the deployment.
+    throw new Error(
+      "This action needs SUPABASE_SERVICE_ROLE_KEY, which is not set on this deployment. " +
+        "Add it as a private variable — never with the NEXT_PUBLIC_ prefix — and redeploy.",
+    );
   }
   return user;
 }

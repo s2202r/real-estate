@@ -129,6 +129,44 @@ function readClientEnv(): ClientEnv {
  */
 export const clientEnv: ClientEnv = readClientEnv();
 
+/**
+ * Read the server environment ONE VARIABLE AT A TIME.
+ *
+ * This used to validate `process.env` as a single object and, on any failure,
+ * fall back to the schema's defaults — which discarded every real value,
+ * including the service-role key. One unrelated variable set to something the
+ * schema did not recognise ("MAP_PROVIDER=mapbox") therefore took privileged
+ * operations down across the admin console, and the message on screen —
+ * "Administrative operations are unavailable in this environment" — pointed
+ * nowhere near the cause.
+ *
+ * Validating field by field keeps the blast radius to the variable that is
+ * actually wrong: that one falls back to its default and is reported by name,
+ * and everything else is used as configured.
+ */
+function readServerEnv(): ServerEnv {
+  const result: Record<string, unknown> = {};
+
+  for (const [variable, field] of Object.entries(serverSchema.shape)) {
+    // Whitespace comes free with anything pasted out of a dashboard, and a
+    // variable set to "" is one somebody left blank, not one they set.
+    const raw = process.env[variable]?.trim();
+    const value = raw === "" ? undefined : raw;
+
+    const parsed = field.safeParse(value);
+    if (parsed.success) {
+      result[variable] = parsed.data;
+      continue;
+    }
+
+    warn(variable, `${parsed.error.issues[0]?.message ?? "is invalid"}; using the default`);
+    const fallback = field.safeParse(undefined);
+    result[variable] = fallback.success ? fallback.data : undefined;
+  }
+
+  return result as ServerEnv;
+}
+
 let cachedServerEnv: ServerEnv | null = null;
 
 export function getServerEnv(): ServerEnv {
@@ -136,19 +174,7 @@ export function getServerEnv(): ServerEnv {
     throw new Error("getServerEnv() must never be called in the browser.");
   }
 
-  if (!cachedServerEnv) {
-    const parsed = serverSchema.safeParse(process.env);
-    if (parsed.success) {
-      cachedServerEnv = parsed.data;
-    } else {
-      // One bad provider name should disable that provider, not the platform.
-      for (const issue of parsed.error.issues) {
-        warn(String(issue.path[0] ?? "unknown"), `${issue.message}; using the default`);
-      }
-      cachedServerEnv = serverSchema.parse({});
-    }
-  }
-
+  if (!cachedServerEnv) cachedServerEnv = readServerEnv();
   return cachedServerEnv;
 }
 

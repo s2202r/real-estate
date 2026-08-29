@@ -13,6 +13,7 @@ import {
   Users,
 } from "@/components/layout/nav-icons";
 import { requireUser } from "@/lib/auth/session";
+import { isAdminClientAvailable } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getAdminDashboard, getUnreadNotificationCount } from "@/lib/data/dashboard";
 import { DashboardShell, type NavItem } from "@/components/layout/dashboard-shell";
@@ -80,6 +81,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       title="Admin console"
       description={`Signed in as ${user.adminRole ? humanise(user.adminRole) : "administrator"}.`}
     >
+      {/* Every privileged operation in this console runs through the
+          service-role client. Without its key they all fail at the moment they
+          are clicked, one at a time, with no hint of a shared cause — so say it
+          once, up front, where an operator sees it before trying. */}
+      {!isAdminClientAvailable() && (
+        <div className="mb-6 flex gap-3 rounded-lg border border-warning/40 bg-warning-muted p-4">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden />
+          <div className="text-sm">
+            <p className="font-medium">Privileged actions are disabled on this deployment.</p>
+            <p className="mt-1 text-muted-foreground">
+              Moderation, verification, suspension, commission approval and standing recomputation
+              all need <code className="font-mono text-xs">SUPABASE_SERVICE_ROLE_KEY</code>, which
+              is not set. Add it to the hosting environment as a private variable — never with the{" "}
+              <code className="font-mono text-xs">NEXT_PUBLIC_</code> prefix, which would publish it
+              to every browser — and redeploy. Reading is unaffected.
+            </p>
+          </div>
+        </div>
+      )}
+
       {children}
     </DashboardShell>
   );

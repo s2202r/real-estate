@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { normaliseUrl } from "../env";
 
 /**
@@ -49,5 +49,69 @@ describe("normaliseUrl", () => {
 
   it("preserves a non-https scheme that was stated explicitly", () => {
     expect(normaliseUrl("http://localhost:3000", "TEST")).toBe("http://localhost:3000");
+  });
+});
+
+/**
+ * Reported symptom: every privileged admin action ("recompute standing",
+ * moderation, commission approval) answered "Administrative operations are
+ * unavailable in this environment" on a deployment where
+ * SUPABASE_SERVICE_ROLE_KEY was set.
+ *
+ * `getServerEnv()` validated the whole environment as one object and, on any
+ * failure, fell back to `serverSchema.parse({})` — the defaults, with every
+ * real value discarded. So a single unrelated variable set to something the
+ * schema did not recognise ("MAP_PROVIDER=mapbox") took the service-role key
+ * down with it, and the admin console lost every privileged operation for a
+ * reason nothing on screen connected to it.
+ */
+async function loadEnv() {
+  vi.resetModules();
+  return import("../env");
+}
+
+const original = { ...process.env };
+
+afterEach(() => {
+  process.env = { ...original };
+});
+
+describe("getServerEnv", () => {
+  it("keeps the service-role key when an unrelated variable is invalid", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+    process.env.MAP_PROVIDER = "mapbox"; // not a provider this app supports
+
+    const { getServerEnv } = await loadEnv();
+    const env = getServerEnv();
+
+    expect(env.SUPABASE_SERVICE_ROLE_KEY).toBe("service-role-key");
+    // The bad value alone falls back to its default.
+    expect(env.MAP_PROVIDER).toBe("none");
+  });
+
+  it("reports the bad variable by name, without its value", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-key";
+    process.env.LOG_LEVEL = "LOUD";
+
+    const { getServerEnv, configWarnings } = await loadEnv();
+    getServerEnv();
+
+    const warning = configWarnings().find((entry) => entry.variable === "LOG_LEVEL");
+    expect(warning).toBeDefined();
+    expect(JSON.stringify(configWarnings())).not.toContain("service-role-key");
+  });
+
+  it("treats an empty or blank value as absent", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "   ";
+
+    const { getServerEnv } = await loadEnv();
+    expect(getServerEnv().SUPABASE_SERVICE_ROLE_KEY).toBeUndefined();
+  });
+
+  it("trims a key pasted with surrounding whitespace", async () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "  service-role-key\n";
+
+    const { getServerEnv } = await loadEnv();
+    expect(getServerEnv().SUPABASE_SERVICE_ROLE_KEY).toBe("service-role-key");
   });
 });
