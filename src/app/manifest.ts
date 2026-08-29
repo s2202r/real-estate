@@ -21,14 +21,21 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: BRAND_COLORS.solid,
     lang: appConfig.locale,
     categories: ["business", "lifestyle", "shopping"],
+    // A 192 and a 512 PNG are what an installable manifest must carry; the
+    // maskable variant keeps the glyph inside the safe zone so Android can
+    // crop it to whatever shape the launcher uses without clipping the roof.
     icons: [
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     ],
     shortcuts: [
-      { name: "Search properties", url: "/properties" },
-      { name: "My dashboard", url: "/dashboard" },
-      { name: "Site visits", url: "/dashboard/visits" },
+      { name: "Search properties", url: "/properties", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },
+      { name: "My dashboard", url: "/dashboard", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },
+      { name: "Site visits", url: "/dashboard/visits", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },
     ],
+    prefer_related_applications: false,
   };
 }

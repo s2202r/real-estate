@@ -221,3 +221,27 @@ decisions and must not be treated as such.** Full detail in
   kit, virtual tours, location/price intelligence.
 - **Phase 3** — document OCR and fraud detection, automated RERA verification,
   valuation, NRI mode, finance/insurance/legal/interiors marketplaces, partner API.
+
+---
+
+## Progressive web app
+
+The app is installable: `app/manifest.ts` declares it, `public/sw.js` is the
+service worker, and `components/pwa/` registers it and offers the install.
+
+The caching policy is a privacy decision before it is a performance one.
+
+| Cached | Not cached |
+| --- | --- |
+| The offline page and the icons (precached on install) | **All HTML.** Every page is either personalised or changes through the day |
+| `/_next/static/*`, which is content-hashed and immutable | `/api/*` and `/auth/*` — per-session by definition, and tokens must not touch disk |
+| | Cross-origin requests, including listing photography |
+| | Anything that is not a GET |
+
+Nothing personal is written to the device. A navigation goes to the network
+and falls back to the offline page only when the network is genuinely
+unavailable, so a cached page can never show one visitor another's data, or a
+listing that has since been suspended.
+
+Bumping `VERSION` in `public/sw.js` invalidates every cache it owns; the
+worker deletes caches it no longer recognises on activate.

@@ -105,6 +105,7 @@ npm run dev
 | `/` | Public site |
 | `/properties` | Verified property search |
 | `/how-it-works` | Network guide — agents, investors and admins only |
+| `/offline` | Served by the service worker when a navigation fails |
 | `/dashboard` | Customer |
 | `/agent/dashboard` | Agent workspace |
 | `/admin` | Operations console |

@@ -31,6 +31,11 @@ const csp = [
   `media-src 'self' blob:${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
   `connect-src 'self' https://maps.googleapis.com${supabaseOrigin ? ` ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}` : ""}`,
   `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com`,
+  // The service worker and the manifest are same-origin; `default-src`
+  // would already cover them, but a CSP that states its intent is easier
+  // to review than one that relies on a fallback.
+  `worker-src 'self'`,
+  `manifest-src 'self'`,
   `object-src 'none'`,
   `base-uri 'self'`,
   `form-action 'self'`,

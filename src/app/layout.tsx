@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { appConfig } from "@/config/app";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import "./globals.css";
 
 /**
@@ -53,6 +55,15 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
   formatDetection: { telephone: false, email: false, address: false },
+
+  // iOS does not read the manifest for these: the standalone flag, the title
+  // under the icon and the status bar all come from meta tags.
+  appleWebApp: {
+    capable: true,
+    title: appConfig.name,
+    statusBarStyle: "default",
+  },
+  manifest: "/manifest.webmanifest",
 };
 
 export const viewport: Viewport = {
@@ -75,6 +86,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+        <ServiceWorkerRegistration />
+        <InstallPrompt />
       </body>
     </html>
   );
