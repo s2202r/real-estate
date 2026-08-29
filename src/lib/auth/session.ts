@@ -55,7 +55,17 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
         .select("full_name, display_name, avatar_url, city, status, email")
         .eq("id", user.id)
         .maybeSingle(),
-      supabase.from("user_roles").select("role, admin_role").is("revoked_at", null),
+      // Scoped by user_id explicitly, NOT left to RLS. The policy on this table
+      // reads `user_id = auth.uid() OR is_admin()`, so for an administrator it
+      // returns every role row in the platform: their own session would then
+      // carry other people's roles, and `adminRole` would be whichever admin
+      // row happened to come back first — possibly not theirs. RLS is the
+      // boundary; the filter is the query saying what it actually wants.
+      supabase
+        .from("user_roles")
+        .select("role, admin_role")
+        .eq("user_id", user.id)
+        .is("revoked_at", null),
       supabase.from("agents").select("id").eq("user_id", user.id).maybeSingle(),
       supabase.from("customers").select("id").eq("user_id", user.id).maybeSingle(),
       supabase.from("investors").select("id").eq("user_id", user.id).maybeSingle(),

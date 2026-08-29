@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
+import { getSessionUser } from "@/lib/auth/session";
 
 /**
  * Dashboard aggregates.
@@ -23,6 +24,7 @@ export interface CustomerDashboardData {
 }
 
 export async function getCustomerDashboard(customerId: string): Promise<CustomerDashboardData> {
+  const sessionUserId = (await getSessionUser())?.id ?? "";
   if (!isSupabaseConfigured()) {
     return {
       savedCount: 0,
@@ -50,7 +52,11 @@ export async function getCustomerDashboard(customerId: string): Promise<Customer
       .eq("customer_id", customerId)
       .gte("requested_date", today)
       .not("status", "in", "(CANCELLED,EXPIRED,REJECTED)"),
-    supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null),
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", sessionUserId)
+      .is("read_at", null),
   ]);
 
   return {
@@ -77,6 +83,7 @@ export interface AgentDashboardData {
 }
 
 export async function getAgentDashboard(agentId: string): Promise<AgentDashboardData> {
+  const sessionUserId = (await getSessionUser())?.id ?? "";
   const empty: AgentDashboardData = {
     activeListings: 0,
     draftListings: 0,
@@ -130,7 +137,11 @@ export async function getAgentDashboard(agentId: string): Promise<AgentDashboard
       .select("amount_minor, status")
       .eq("agent_id", agentId)
       .in("status", ["CALCULATED", "APPROVED", "PAYMENT_PROCESSING", "PAID"]),
-    supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null),
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", sessionUserId)
+      .is("read_at", null),
     supabase
       .from("listing_shares")
       .select("id", { count: "exact", head: true })
@@ -277,10 +288,18 @@ export async function getMarketplaceTotals() {
 
 export async function getUnreadNotificationCount(): Promise<number> {
   if (!isSupabaseConfigured()) return 0;
+
+  // Scoped to the caller explicitly. The policy on this table allows an
+  // administrator to read everyone's notifications, so relying on RLS alone
+  // would show an admin the whole platform's unread count in their own badge.
+  const user = await getSessionUser();
+  if (!user) return 0;
+
   const supabase = await createClient();
   const { count } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
     .is("read_at", null);
   return count ?? 0;
 }
