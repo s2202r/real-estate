@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CityField } from "./geo";
 import { checkVisitSlot } from "@/lib/domain/visits";
 import { appConfig, platformLimits } from "@/config/app";
 
@@ -71,7 +72,7 @@ export const RequirementSchema = z
     title: z.string().trim().min(5).max(160).optional(),
     listingType: z.enum(["SALE", "RENT", "LEASE"]),
     propertyTypes: z.array(z.string()).min(1, "Choose at least one property type.").max(8),
-    city: z.string().trim().min(2).max(80),
+    city: CityField,
     localities: z.array(z.string().trim().max(80)).max(10).default([]),
     budgetMin: z.coerce.number().nonnegative().optional(),
     budgetMax: z.coerce.number().positive("Enter a maximum budget."),

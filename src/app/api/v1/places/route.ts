@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { withApi } from "@/lib/api/handler";
 import { getLocalitiesForCity, searchProjects, type ProjectSummary } from "@/lib/data/places";
-import { supportedCities } from "@/config/app";
+import { findCity } from "@/data/india";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +19,10 @@ const QuerySchema = z.object({
   city: z
     .string()
     .trim()
-    .refine((value) => supportedCities.some((city) => city.name === value), {
-      message: "Not a city this platform serves.",
+    .max(80)
+    .transform((value) => findCity(value)?.name)
+    .refine((value): value is string => Boolean(value), {
+      message: "Not a city we recognise.",
     }),
 });
 

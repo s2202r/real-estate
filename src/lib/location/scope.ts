@@ -1,4 +1,4 @@
-import { supportedCities } from "@/config/app";
+import { findCity } from "@/data/india";
 
 /**
  * The visitor's chosen location, carried across the whole site.
@@ -36,11 +36,11 @@ export function parseScope(raw: unknown): LocationScope {
   if (typeof raw !== "object" || raw === null) return {};
   const value = raw as Record<string, unknown>;
 
+  // Any city in India, in its canonical spelling. It is deliberately wider
+  // than the cities the platform promotes: inventory exists where agents put
+  // it, and a scope of "Indore" must survive a round trip through the cookie.
   const city =
-    typeof value.city === "string" &&
-    supportedCities.some((entry) => entry.name === value.city)
-      ? value.city
-      : undefined;
+    typeof value.city === "string" ? findCity(value.city)?.name : undefined;
 
   // A locality without a city is meaningless, and would filter every result
   // out of a nationwide search.

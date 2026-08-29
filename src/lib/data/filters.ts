@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ListingSearchFilters, ListingSort } from "./listings";
 import type { AgentSearchFilters } from "./agents";
 import type { Enums } from "@/types/database";
-import { supportedCities } from "@/config/app";
+import { findCity } from "@/data/india";
 
 /**
  * Parse URL search params into typed listing filters.
@@ -56,7 +56,18 @@ const POSSESSIONS = [
   "READY_TO_MOVE", "UNDER_CONSTRUCTION", "NEW_LAUNCH", "RESALE",
 ] as const satisfies readonly Enums["possession_status"][];
 
-const SUPPORTED_CITY_NAMES: readonly string[] = supportedCities.map((city) => city.name);
+/**
+ * Canonicalise a city from the query string.
+ *
+ * Cities are stored with one spelling, so `?city=bangalore` has to become
+ * "Bengaluru" or it matches nothing. A name we do not recognise is dropped
+ * rather than passed through: it can only ever return an empty result set, and
+ * the filter chips would then show a city the platform has no concept of.
+ */
+function cityParam(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return findCity(value)?.name;
+}
 
 export function parseListingFilters(
   params: Record<string, string | string[] | undefined>,
@@ -70,7 +81,7 @@ export function parseListingFilters(
 
   return {
     query: first(params.q)?.slice(0, 120) || undefined,
-    city: first(params.city)?.slice(0, 80) || undefined,
+    city: cityParam(first(params.city)?.slice(0, 80)),
     locality: first(params.locality)?.slice(0, 80) || undefined,
     listingType,
     propertyTypes: multi(params.type, PROPERTY_TYPES),
@@ -102,11 +113,10 @@ export function parseListingFilters(
 export function parseAgentFilters(
   params: Record<string, string | string[] | undefined>,
 ): AgentSearchFilters {
-  const city = first(params.city)?.slice(0, 80) || undefined;
-
   return {
-    // Only cities the platform is actually live in are accepted.
-    city: SUPPORTED_CITY_NAMES.includes(city ?? "") ? city : undefined,
+    // Any Indian city, canonicalised; anything else is dropped rather than
+    // sent to the database as a filter that cannot match.
+    city: cityParam(first(params.city)?.slice(0, 80)),
     locality: first(params.locality)?.slice(0, 80) || undefined,
     language: first(params.language)?.slice(0, 40) || undefined,
     propertyType: multi(params.specialisation, PROPERTY_TYPES, 1)?.[0],

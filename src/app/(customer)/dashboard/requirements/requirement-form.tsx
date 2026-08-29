@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createRequirement } from "@/lib/actions/leads";
+import { CityPicker } from "@/components/shared/city-picker";
 import { supportedCities } from "@/config/app";
 import type { ActionResult } from "@/lib/actions/leads";
 
@@ -98,21 +99,15 @@ export function RequirementForm() {
               <FieldError errors={state?.fieldErrors?.propertyTypes} />
             </fieldset>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="req-city">City</Label>
-              <select
-                id="req-city"
-                name="city"
-                required
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {supportedCities.map((city) => (
-                  <option key={city.slug} value={city.name}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Type-ahead over every Indian city rather than a ten-entry
+                dropdown: someone looking in Indore should not have to find
+                their requirement unpostable. */}
+            <CityPicker
+              id="req-city"
+              defaultValue={supportedCities[0].name}
+              required
+              error={state?.fieldErrors?.city}
+            />
 
             <div className="space-y-1.5">
               <Label htmlFor="req-localities">Preferred localities</Label>

@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { CityPicker } from "@/components/shared/city-picker";
 import { moderateListing, updateListingAsAdmin } from "@/lib/actions/admin";
 import type { ActionResult } from "@/lib/actions/leads";
 
@@ -131,7 +132,12 @@ function EditForm({ listing, onDone }: { listing: EditableListing; onDone: () =>
           errors={state}
         />
         <FormField label="Locality" name="locality" defaultValue={listing.locality} errors={state} />
-        <FormField label="City" name="city" defaultValue={listing.city} errors={state} />
+        <CityPicker
+          id="admin-city"
+          defaultValue={listing.city}
+          required
+          error={state?.fieldErrors?.city}
+        />
       </div>
 
       <div className="space-y-1.5">

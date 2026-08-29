@@ -4,15 +4,25 @@ import { applyScope, describeScope, parseScope } from "../scope";
 const PROJECT_ID = "11111111-2222-4333-8444-555555555555";
 
 describe("parseScope", () => {
-  it("accepts a city the platform actually serves", () => {
+  it("accepts any real Indian city", () => {
     expect(parseScope({ city: "Noida" })).toEqual({ city: "Noida" });
+    // Not one of the cities the platform promotes — inventory is wherever
+    // agents put it, and the scope has to be able to say so.
+    expect(parseScope({ city: "Indore" })).toEqual({ city: "Indore" });
   });
 
-  it("rejects a city it does not serve", () => {
+  it("canonicalises the spelling", () => {
+    // Cities are stored one way. A cookie saying "bangalore" has to become
+    // "Bengaluru" or it silently matches nothing.
+    expect(parseScope({ city: "noida" })).toEqual({ city: "Noida" });
+    expect(parseScope({ city: "  BENGALURU " })).toEqual({ city: "Bengaluru" });
+  });
+
+  it("rejects a city that does not exist", () => {
     // The cookie is user input: a value that reaches a query unchecked would
     // filter every result out and look like an empty market.
     expect(parseScope({ city: "Atlantis" })).toEqual({});
-    expect(parseScope({ city: "noida" })).toEqual({});
+    expect(parseScope({ city: 42 })).toEqual({});
   });
 
   it("drops a locality with no city, which would match nothing", () => {

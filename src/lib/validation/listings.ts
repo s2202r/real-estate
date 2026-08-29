@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CityField, StateField } from "./geo";
 import { instagramCode, youTubeId } from "@/lib/domain/social";
 
 /**
@@ -56,9 +57,9 @@ export const ListingDraftSchema = z
     coveredParking: z.coerce.number().int().min(0).max(20).default(0),
     openParking: z.coerce.number().int().min(0).max(20).default(0),
 
-    city: z.string().trim().min(2).max(80),
+    city: CityField,
     locality: z.string().trim().min(2).max(80),
-    state: z.string().trim().min(2).max(80),
+    state: StateField,
     pincode: z
       .string()
       .trim()
@@ -151,7 +152,7 @@ export const AdminListingEditSchema = z.object({
   bathrooms: z.coerce.number().int().min(0).max(30).optional(),
   builtUpArea: z.coerce.number().positive().optional(),
   locality: z.string().trim().min(2).max(80),
-  city: z.string().trim().min(2).max(80),
+  city: CityField,
   reason: z.string().trim().min(5, "Say why, for the audit trail.").max(500),
 });
 

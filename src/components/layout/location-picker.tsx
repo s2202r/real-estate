@@ -16,6 +16,7 @@ import {
 import { setLocationScope } from "@/lib/actions/location";
 import { describeScope, type LocationScope } from "@/lib/location/scope";
 import type { ProjectSummary } from "@/lib/data/places";
+import { searchCities } from "@/data/india";
 import { cn } from "@/lib/utils";
 
 /**
@@ -56,6 +57,7 @@ export function LocationPicker({
   });
   const [loadingOptions, setLoadingOptions] = useState(false);
 
+  const [cityQuery, setCityQuery] = useState("");
   const [localityQuery, setLocalityQuery] = useState("");
   const [projectQuery, setProjectQuery] = useState("");
 
@@ -68,6 +70,7 @@ export function LocationPicker({
     if (next) {
       setDraft(scope);
       setOptions({ localities: [...localities], projects: [...projects] });
+      setCityQuery("");
       setLocalityQuery("");
       setProjectQuery("");
       pendingCity.current = null;
@@ -107,6 +110,19 @@ export function LocationPicker({
       if (pendingCity.current === city) setLoadingOptions(false);
     }
   };
+
+  /**
+   * Searching reaches the whole country, not just the chips.
+   *
+   * The chips are the cities the platform promotes — the answer for most
+   * visitors, one tap away. But inventory exists wherever an agent puts it, so
+   * someone looking in Indore must be able to say so rather than conclude the
+   * site does not cover them.
+   */
+  const cityMatches = useMemo(
+    () => (cityQuery.trim() ? searchCities(cityQuery, 12) : []),
+    [cityQuery],
+  );
 
   const visibleLocalities = useMemo(() => {
     const term = localityQuery.trim().toLowerCase();
@@ -215,25 +231,78 @@ export function LocationPicker({
         <div className={cn("flex-1 space-y-6 pb-2", isPending && "pointer-events-none opacity-60")}>
           <section>
             <h3 className="mb-3 text-sm font-semibold">City</h3>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={draft.city ? "outline" : "default"}
-                size="sm"
-                onClick={() => pickCity(undefined)}
-              >
-                All cities
-              </Button>
-              {cities.map((city) => (
-                <Button
-                  key={city.name}
-                  variant={draft.city === city.name ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => pickCity(city.name)}
-                >
-                  {city.name}
-                </Button>
-              ))}
+            <div className="relative mb-3">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                value={cityQuery}
+                onChange={(event) => setCityQuery(event.target.value)}
+                placeholder="Search any city in India"
+                className="h-9 pl-9"
+                aria-label="Search any city in India"
+              />
             </div>
+
+            {cityQuery.trim() ? (
+              cityMatches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No city matches “{cityQuery.trim()}”.
+                </p>
+              ) : (
+                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+                  {cityMatches.map((city) => (
+                    <button
+                      key={city.slug}
+                      type="button"
+                      onClick={() => {
+                        setCityQuery("");
+                        pickCity(city.name);
+                      }}
+                      aria-pressed={draft.city === city.name}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent",
+                        draft.city === city.name && "bg-accent font-medium",
+                      )}
+                    >
+                      <span className="min-w-0 truncate">
+                        {city.name}
+                        <span className="text-muted-foreground">, {city.state}</span>
+                      </span>
+                      {draft.city === city.name && (
+                        <Check className="size-4 text-primary" aria-hidden />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={draft.city ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => pickCity(undefined)}
+                >
+                  All cities
+                </Button>
+                {cities.map((city) => (
+                  <Button
+                    key={city.name}
+                    variant={draft.city === city.name ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => pickCity(city.name)}
+                  >
+                    {city.name}
+                  </Button>
+                ))}
+                {draft.city && !cities.some((city) => city.name === draft.city) && (
+                  <Button variant="default" size="sm" onClick={() => pickCity(draft.city)}>
+                    {draft.city}
+                  </Button>
+                )}
+              </div>
+            )}
           </section>
 
           {draft.city && (

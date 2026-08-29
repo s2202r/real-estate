@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { saveListing } from "@/lib/actions/listings";
+import { CityPicker } from "@/components/shared/city-picker";
 import { supportedCities } from "@/config/app";
 import { features } from "@/config/features";
 import type { ActionResult } from "@/lib/actions/leads";
@@ -111,27 +112,21 @@ export function ListingForm({
             </select>
           </Field>
 
-          <Field label="City" htmlFor="city">
-            <select
-              id="city"
-              name="city"
-              required
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {supportedCities.map((city) => (
-                <option key={city.slug} value={city.name}>
-                  {city.name}
-                </option>
-              ))}
-            </select>
-          </Field>
+          {/* Anywhere in India, not just the cities the platform promotes: an
+              agent's inventory is wherever it is. The state follows the city
+              so the two can never contradict each other. */}
+          <CityPicker
+            id="city"
+            className="sm:col-span-2"
+            defaultValue={supportedCities[0].name}
+            stateName="state"
+            required
+            error={state?.fieldErrors?.city}
+            stateError={state?.fieldErrors?.state}
+          />
 
           <Field label="Locality" htmlFor="locality" error={state?.fieldErrors?.locality}>
             <Input id="locality" name="locality" required placeholder="Sector 137" />
-          </Field>
-
-          <Field label="State" htmlFor="state">
-            <Input id="state" name="state" required defaultValue="Uttar Pradesh" />
           </Field>
 
           <Field label="PIN code" htmlFor="pincode" error={state?.fieldErrors?.pincode}>
