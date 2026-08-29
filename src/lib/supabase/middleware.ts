@@ -41,9 +41,18 @@ export async function updateSession(request: NextRequest) {
 
   // getUser() revalidates against the auth server. getSession() would trust a
   // cookie the client could have tampered with.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return { response, user };
+  //
+  // Wrapped because this runs on EVERY request: an exception here — a paused
+  // project, a DNS failure, a TLS error — would escape into middleware and
+  // return a bare 500 with no body and no digest for the whole site. A session
+  // that cannot be refreshed means "signed out", not "the site is down".
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return { response, user };
+  } catch (error) {
+    console.error("[middleware] session refresh failed", error);
+    return { response, user: null };
+  }
 }

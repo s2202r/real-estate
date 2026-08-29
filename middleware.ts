@@ -13,6 +13,19 @@ const PROTECTED_PREFIXES = ["/dashboard", "/agent", "/investor", "/admin"] as co
 const AUTH_PAGES = ["/login", "/register"] as const;
 
 export async function middleware(request: NextRequest) {
+  try {
+    return await route(request);
+  } catch (error) {
+    // Middleware runs before everything. A throw here is not a page error with
+    // a digest and an error boundary — it is an empty 500 on every route in the
+    // app, which is indistinguishable from the site being down. Whatever went
+    // wrong, letting the request through is the better failure.
+    console.error("[middleware] failed, passing the request through", error);
+    return NextResponse.next();
+  }
+}
+
+async function route(request: NextRequest) {
   const { response, user } = await updateSession(request);
   const { pathname, search } = request.nextUrl;
 
@@ -40,6 +53,6 @@ export const config = {
      * Everything except static assets and image files — those never need a
      * session refresh, and excluding them keeps middleware off the hot path.
      */
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico)$).*)",
   ],
 };
