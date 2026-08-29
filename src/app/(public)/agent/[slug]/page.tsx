@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { VerificationBadgeList } from "@/components/shared/verification-badge";
+import { SocialLinks } from "@/components/shared/social-links";
 import { PropertyGrid } from "@/components/shared/property-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getAgentBySlug, getAgentListings, getAgentReviews } from "@/lib/data/agents";
@@ -173,6 +174,17 @@ export default async function AgentProfilePage({ params }: PageProps) {
         </div>
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+          {Object.keys(agent.socialLinks).length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Find {name} elsewhere</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SocialLinks links={agent.socialLinks} />
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">At a glance</CardTitle>

@@ -238,6 +238,13 @@ update public.profiles p
   from public.agents a
  where a.user_id = p.id and a.is_demo;
 
+-- The later cohort gets links too, for the same reason.
+update public.agents
+   set website_url   = 'https://' || slug || '.example.in',
+       instagram_url = 'https://www.instagram.com/' || replace(slug, '-', '.'),
+       youtube_url   = 'https://www.youtube.com/@' || slug
+ where is_demo and instagram_url is null;
+
 -- RERA records and an approved identity check for the new cohort only.
 insert into public.agent_rera_records (agent_id, rera_number, state, authority, registered_name, valid_from, valid_until, status, verified_at)
 select a.id,

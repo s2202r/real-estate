@@ -69,6 +69,7 @@ export async function saveListing(
     longitude: formData.get("longitude") || undefined,
     coverImageUrl: formData.get("coverImageUrl") || undefined,
     youtubeUrl: formData.get("youtubeUrl") || undefined,
+    instagramReelUrl: formData.get("instagramReelUrl") || undefined,
     virtualTourUrl: formData.get("virtualTourUrl") || undefined,
     tower: formData.get("tower") || undefined,
     unitNumber: formData.get("unitNumber") || undefined,
@@ -171,7 +172,9 @@ export async function saveListing(
   const completeness = calculateListingCompleteness({
     hasImages: input.coverImageUrl ? 1 : 0,
     hasFloorPlan: false,
-    hasVideoOrTour: Boolean(input.youtubeUrl || input.virtualTourUrl),
+    hasVideoOrTour: Boolean(
+      input.youtubeUrl || input.instagramReelUrl || input.virtualTourUrl,
+    ),
     hasDescription: Boolean(input.description),
     hasAmenities: input.amenities.length > 0,
     hasNearbyPlaces: false,
@@ -226,6 +229,7 @@ export async function saveListing(
       longitude: input.longitude != null ? String(input.longitude) : null,
       cover_image_url: input.coverImageUrl || null,
       youtube_url: input.youtubeUrl || null,
+      instagram_reel_url: input.instagramReelUrl || null,
       virtual_tour_url: input.virtualTourUrl || null,
       is_shareable: input.isShareable,
     })

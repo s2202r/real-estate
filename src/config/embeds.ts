@@ -22,6 +22,7 @@ export const DEFAULT_EMBED_HOSTS = [
   "www.youtube.com",
   "www.youtube-nocookie.com",
   "player.vimeo.com",
+  "www.instagram.com", // reel embeds
   "my.matterport.com",
   "kuula.co",
   "www.google.com", // Maps embeds

@@ -1,4 +1,4 @@
-import { BadgeCheck, FileText, ShieldCheck } from "lucide-react";
+import { BadgeCheck, FileText, Link2 as LinkIcon, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -9,6 +9,8 @@ import { requireAgentPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import type { Enums } from "@/types/database";
+import { SocialLinksForm } from "./social-links-form";
+import { normaliseSocialUrl, type SocialPlatform } from "@/lib/domain/social";
 
 export const metadata = { title: "Profile and verification" };
 
@@ -21,6 +23,14 @@ export default async function AgentProfilePage() {
   ]);
 
   if (!agent) return <p className="text-sm text-muted-foreground">Profile unavailable.</p>;
+
+  const socialLinks = {
+    ...pick("website", agent.website_url),
+    ...pick("instagram", agent.instagram_url),
+    ...pick("youtube", agent.youtube_url),
+    ...pick("linkedin", agent.linkedin_url),
+    ...pick("facebook", agent.facebook_url),
+  };
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -157,6 +167,22 @@ export default async function AgentProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <LinkIcon className="size-4" aria-hidden />
+            Your links
+          </CardTitle>
+          <CardDescription>
+            Where customers can see your work. These are shown as your own links, and they are
+            separate from verification.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SocialLinksForm current={socialLinks} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -170,6 +196,16 @@ interface AgentProfileRow {
   badges: Enums["agent_badge"][];
   accepts_visit_requests: boolean;
   max_visit_distance_km: string;
+  website_url: string | null;
+  instagram_url: string | null;
+  youtube_url: string | null;
+  linkedin_url: string | null;
+  facebook_url: string | null;
+}
+
+function pick(platform: SocialPlatform, raw: string | null) {
+  const url = normaliseSocialUrl(platform, raw);
+  return url ? { [platform]: url } : {};
 }
 
 async function getAgent(agentId: string): Promise<AgentProfileRow | null> {
@@ -178,7 +214,7 @@ async function getAgent(agentId: string): Promise<AgentProfileRow | null> {
   const { data } = await supabase
     .from("agents")
     .select(
-      "slug, agency_name, experience_years, service_cities, languages, badges, accepts_visit_requests, max_visit_distance_km",
+      "slug, agency_name, experience_years, service_cities, languages, badges, accepts_visit_requests, max_visit_distance_km, website_url, instagram_url, youtube_url, linkedin_url, facebook_url",
     )
     .eq("id", agentId)
     .maybeSingle();

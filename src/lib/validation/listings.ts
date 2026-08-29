@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { instagramCode, youTubeId } from "@/lib/domain/social";
 
 /**
  * Listing creation and moderation schemas.
@@ -69,7 +70,24 @@ export const ListingDraftSchema = z
     longitude: z.coerce.number().min(-180).max(180).optional(),
 
     coverImageUrl: z.string().url().optional().or(z.literal("")),
-    youtubeUrl: z.string().url().optional().or(z.literal("")),
+    // Accepts a full video or a Short — both are YouTube URLs, and the gallery
+    // reads the URL to decide how to frame it.
+    youtubeUrl: z
+      .string()
+      .url()
+      .optional()
+      .or(z.literal(""))
+      .refine((value) => !value || youTubeId(value) !== null, {
+        message: "That is not a YouTube video or Short link.",
+      }),
+    instagramReelUrl: z
+      .string()
+      .url()
+      .optional()
+      .or(z.literal(""))
+      .refine((value) => !value || instagramCode(value) !== null, {
+        message: "Paste the link to a Reel, not a profile.",
+      }),
     virtualTourUrl: z.string().url().optional().or(z.literal("")),
 
     tower: z.string().trim().max(50).optional(),

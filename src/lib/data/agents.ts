@@ -4,6 +4,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import type { Enums } from "@/types/database";
+import { normaliseSocialUrl, type SocialPlatform } from "@/lib/domain/social";
 import {
   LIST_COLUMNS,
   toListingSummary,
@@ -42,6 +43,11 @@ export interface PublicAgent {
   readonly ratingCount: number;
   readonly closedDealCount: number;
   readonly joinedAt: string;
+  /**
+   * Links the agent typed in themselves. NOT verification — the platform makes
+   * no claim about them, and the UI must not present them as though it did.
+   */
+  readonly socialLinks: Readonly<Partial<Record<SocialPlatform, string>>>;
 }
 
 interface PublicAgentRow {
@@ -65,6 +71,16 @@ interface PublicAgentRow {
   rating_count: number;
   closed_deal_count: number;
   joined_at: string;
+  website_url: string | null;
+  instagram_url: string | null;
+  youtube_url: string | null;
+  linkedin_url: string | null;
+  facebook_url: string | null;
+}
+
+function link(platform: SocialPlatform, raw: string | null) {
+  const url = normaliseSocialUrl(platform, raw);
+  return url ? { [platform]: url } : {};
 }
 
 function toAgent(row: PublicAgentRow): PublicAgent {
@@ -89,6 +105,15 @@ function toAgent(row: PublicAgentRow): PublicAgent {
     ratingCount: row.rating_count ?? 0,
     closedDealCount: row.closed_deal_count ?? 0,
     joinedAt: row.joined_at,
+    // Re-validated on the way out, not just on the way in: a link that was
+    // stored before the rules tightened must not be republished.
+    socialLinks: {
+      ...link("website", row.website_url),
+      ...link("instagram", row.instagram_url),
+      ...link("youtube", row.youtube_url),
+      ...link("linkedin", row.linkedin_url),
+      ...link("facebook", row.facebook_url),
+    },
   };
 }
 

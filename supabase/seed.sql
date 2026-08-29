@@ -258,6 +258,19 @@ update public.profiles p
   from public.agents a
  where a.user_id = p.id and a.is_demo;
 
+-- ---------------------------------------------------------------------------
+-- Self-declared profile links
+-- ---------------------------------------------------------------------------
+-- So the public profile shows the feature with something in it. These are NOT
+-- verification: the badges above are, and those are granted only after review.
+-- example.in is reserved for documentation, so the website link is inert.
+-- ---------------------------------------------------------------------------
+update public.agents
+   set website_url   = 'https://' || slug || '.example.in',
+       instagram_url = 'https://www.instagram.com/' || replace(slug, '-', '.'),
+       youtube_url   = 'https://www.youtube.com/@' || slug
+ where is_demo;
+
 -- RERA records for the RERA-verified agents
 insert into public.agent_rera_records (agent_id, rera_number, state, authority, registered_name, valid_from, valid_until, status, verified_at)
 select a.id,
@@ -1160,6 +1173,13 @@ update public.profiles p
    set city = a.service_cities[1]
   from public.agents a
  where a.user_id = p.id and a.is_demo;
+
+-- The later cohort gets links too, for the same reason.
+update public.agents
+   set website_url   = 'https://' || slug || '.example.in',
+       instagram_url = 'https://www.instagram.com/' || replace(slug, '-', '.'),
+       youtube_url   = 'https://www.youtube.com/@' || slug
+ where is_demo and instagram_url is null;
 
 -- RERA records and an approved identity check for the new cohort only.
 insert into public.agent_rera_records (agent_id, rera_number, state, authority, registered_name, valid_from, valid_until, status, verified_at)

@@ -630,6 +630,7 @@ function buildGallery(listing: {
   listing_media?: ListingMediaShape[] | null;
   cover_image_url: string | null;
   youtube_url: string | null;
+  instagram_reel_url: string | null;
   virtual_tour_url: string | null;
   tour_360_url: string | null;
   floor_plan_url: string | null;
@@ -654,7 +655,22 @@ function buildGallery(listing: {
   }
 
   if (listing.youtube_url) {
-    items.push({ id: "youtube", type: "YOUTUBE", url: listing.youtube_url, caption: "Property video" });
+    items.push({
+      id: "youtube",
+      type: "YOUTUBE",
+      url: listing.youtube_url,
+      // A Short and a full video both live in this column; the gallery reads
+      // the URL to decide which frame to use.
+      caption: /\/shorts\//.test(listing.youtube_url) ? "Short" : "Property video",
+    });
+  }
+  if (listing.instagram_reel_url) {
+    items.push({
+      id: "reel",
+      type: "INSTAGRAM_REEL",
+      url: listing.instagram_reel_url,
+      caption: "Reel",
+    });
   }
   if (listing.tour_360_url) {
     items.push({ id: "tour360", type: "TOUR_360", url: listing.tour_360_url, caption: "360° tour" });

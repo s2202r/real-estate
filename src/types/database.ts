@@ -338,6 +338,11 @@ export interface Database {
           joined_at: string;
           created_at: string;
           updated_at: string;
+          website_url: string | null;
+          instagram_url: string | null;
+          youtube_url: string | null;
+          linkedin_url: string | null;
+          facebook_url: string | null;
         };
         Insert: {
           id?: string;
@@ -375,6 +380,11 @@ export interface Database {
           joined_at?: string;
           created_at?: string;
           updated_at?: string;
+          website_url?: string | null;
+          instagram_url?: string | null;
+          youtube_url?: string | null;
+          linkedin_url?: string | null;
+          facebook_url?: string | null;
         };
         Update: {
           id?: string;
@@ -412,6 +422,11 @@ export interface Database {
           joined_at?: string;
           created_at?: string;
           updated_at?: string;
+          website_url?: string | null;
+          instagram_url?: string | null;
+          youtube_url?: string | null;
+          linkedin_url?: string | null;
+          facebook_url?: string | null;
         };
         Relationships: [
           {
@@ -5397,6 +5412,11 @@ export interface Database {
           rating_count: number | null;
           closed_deal_count: number | null;
           joined_at: string | null;
+          website_url: string | null;
+          instagram_url: string | null;
+          youtube_url: string | null;
+          linkedin_url: string | null;
+          facebook_url: string | null;
           full_name: string | null;
           display_name: string | null;
           avatar_url: string | null;

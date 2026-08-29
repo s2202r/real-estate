@@ -369,9 +369,23 @@ export function ListingForm({
             <Field label="Cover image URL" htmlFor="coverImageUrl">
               <Input id="coverImageUrl" name="coverImageUrl" type="url" />
             </Field>
-            <Field label="YouTube URL" htmlFor="youtubeUrl">
-              <Input id="youtubeUrl" name="youtubeUrl" type="url" />
+            <Field label="YouTube video or Short" htmlFor="youtubeUrl">
+              <Input
+                id="youtubeUrl"
+                name="youtubeUrl"
+                type="url"
+                placeholder="https://youtube.com/shorts/…"
+              />
             </Field>
+            <Field label="Instagram Reel" htmlFor="instagramReelUrl">
+              <Input
+                id="instagramReelUrl"
+                name="instagramReelUrl"
+                type="url"
+                placeholder="https://instagram.com/reel/…"
+              />
+            </Field>
+
             <Field label="Virtual tour URL" htmlFor="virtualTourUrl">
               <Input id="virtualTourUrl" name="virtualTourUrl" type="url" />
             </Field>

@@ -8,10 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { isEmbeddable } from "@/config/embeds";
+import { toVideoEmbed } from "@/lib/domain/social";
 
 export interface GalleryItem {
   readonly id: string;
-  readonly type: "IMAGE" | "VIDEO" | "YOUTUBE" | "TOUR_360" | "FLOOR_PLAN" | "VIRTUAL_TOUR";
+  /** Mirrors the database's media_type, so a row maps straight onto an item. */
+  readonly type:
+    | "IMAGE"
+    | "VIDEO"
+    | "YOUTUBE"
+    | "INSTAGRAM_REEL"
+    | "TOUR_360"
+    | "FLOOR_PLAN"
+    | "VIRTUAL_TOUR";
   readonly url: string;
   readonly caption?: string | null;
   readonly alt?: string | null;
@@ -55,6 +64,12 @@ export function PropertyGallery({
   }
 
   const active = items[activeIndex] ?? items[0]!;
+  // Reels, Shorts and ordinary videos all arrive as a URL; one helper works out
+  // what can be framed and how.
+  const videoEmbed =
+    active.type === "YOUTUBE" || active.type === "INSTAGRAM_REEL" || active.type === "VIDEO"
+      ? toVideoEmbed(active.url)
+      : null;
   const go = (delta: number) =>
     setActiveIndex((current) => (current + delta + items.length) % items.length);
 
@@ -153,7 +168,12 @@ export function PropertyGallery({
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
         <DialogContent className="max-w-5xl p-2">
           <DialogTitle className="sr-only">{active.caption ?? title}</DialogTitle>
-          <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-lg bg-black",
+              videoEmbed?.vertical ? "h-[min(80vh,40rem)]" : "aspect-video",
+            )}
+          >
             {active.type === "IMAGE" || active.type === "FLOOR_PLAN" ? (
               <Image
                 src={active.url}
@@ -162,14 +182,23 @@ export function PropertyGallery({
                 sizes="90vw"
                 className="object-contain"
               />
-            ) : active.type === "YOUTUBE" ? (
-              <iframe
-                src={toYouTubeEmbed(active.url)}
-                title={active.caption ?? "Property video"}
-                allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"
-                allowFullScreen
-                className="size-full"
-              />
+            ) : videoEmbed ? (
+              // Reels and Shorts are filmed vertically; a 16:9 frame would be
+              // mostly black bars, so the frame follows the source.
+              <div
+                className={cn(
+                  "mx-auto h-full",
+                  videoEmbed.vertical ? "aspect-[9/16] max-w-[min(100%,26rem)]" : "w-full",
+                )}
+              >
+                <iframe
+                  src={videoEmbed.src}
+                  title={active.caption ?? "Property video"}
+                  allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  className="size-full"
+                />
+              </div>
             ) : active.type === "VIDEO" ? (
               <video src={active.url} controls playsInline className="size-full" />
             ) : isEmbeddable(active.url) ? (
@@ -207,11 +236,4 @@ export function PropertyGallery({
       </Dialog>
     </div>
   );
-}
-
-/** Accept a watch URL, a share URL or an id and return a privacy-friendly embed. */
-function toYouTubeEmbed(url: string): string {
-  const match = /(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{6,})/.exec(url);
-  const id = match?.[1] ?? url;
-  return `https://www.youtube-nocookie.com/embed/${id}`;
 }
