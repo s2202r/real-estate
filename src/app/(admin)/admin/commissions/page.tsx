@@ -16,6 +16,7 @@ import { requireCapability } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { formatMoney, fromMajor, money } from "@/lib/domain/money";
+import { CommissionRuleEditor, RuleActiveControl, type EditableRule } from "./rule-editor";
 
 export const metadata = { title: "Commissions" };
 
@@ -29,6 +30,16 @@ export const metadata = { title: "Commissions" };
 export default async function AdminCommissionsPage() {
   await requireCapability("commission.configure");
   const [ledger, rules] = await Promise.all([getLedger(), getRules()]);
+
+  // Only the newest version of a code is editable. The older ones stay on the
+  // page because they are what past payouts were made under, but they are
+  // history: changing one would mean publishing a version on top of the
+  // current one from an out-of-date starting point.
+  const latestByCode = new Map<string, string>();
+  for (const rule of rules) {
+    const seen = rules.find((other) => other.id === latestByCode.get(rule.code));
+    if (!seen || rule.version > seen.version) latestByCode.set(rule.code, rule.id);
+  }
 
   const totals = ledger.reduce(
     (acc, entry) => {
@@ -59,16 +70,28 @@ export default async function AdminCommissionsPage() {
       </section>
 
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Commission rules</CardTitle>
+        <CardHeader className="flex-row items-center justify-between gap-3 pb-3">
+          <div>
+            <CardTitle className="text-base">Commission rules</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Editing publishes a new version rather than overwriting, so a payout can always be
+              explained by the rule as it stood on the day it was calculated.
+            </p>
+          </div>
+          <CommissionRuleEditor />
         </CardHeader>
         <CardContent>
           {rules.length === 0 ? (
-            <EmptyState icon={IndianRupee} title="No commission rules configured" />
+            <EmptyState
+              icon={IndianRupee}
+              title="No commission rules configured"
+              description="Until one exists, no deal can have a commission calculated."
+            />
           ) : (
             <div className="space-y-3">
               {rules.map((rule) => {
                 const policy = rule.policy as { roleShares?: Record<string, number>; visitModel?: string } | null;
+                const isLatest = latestByCode.get(rule.code) === rule.id;
                 return (
                   <div key={rule.id} className="rounded-lg border p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -78,11 +101,20 @@ export default async function AdminCommissionsPage() {
                           {rule.code} v{rule.version}
                           {rule.listing_type ? ` · ${rule.listing_type}` : ""}
                           {rule.city ? ` · ${rule.city}` : ""}
+                          {isLatest ? "" : " · superseded"}
                         </p>
                       </div>
-                      <Badge variant={rule.is_active ? "success" : "muted"} size="sm">
-                        {rule.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={rule.is_active ? "success" : "muted"} size="sm">
+                          {rule.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                        {isLatest && (
+                          <>
+                            <CommissionRuleEditor rule={rule} />
+                            <RuleActiveControl rule={rule} />
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
@@ -204,21 +236,7 @@ async function getLedger(): Promise<LedgerRow[]> {
   return (data ?? []) as unknown as LedgerRow[];
 }
 
-interface RuleRow {
-  id: string;
-  code: string;
-  name: string;
-  version: number;
-  listing_type: string | null;
-  city: string | null;
-  pool_mode: string;
-  pool_percent: string | null;
-  pool_fixed_amount: string | null;
-  min_pool_amount: string | null;
-  visit_model: string;
-  is_active: boolean;
-  policy: unknown;
-}
+type RuleRow = EditableRule & { visit_model: string };
 
 async function getRules(): Promise<RuleRow[]> {
   if (!isSupabaseConfigured()) return [];
@@ -226,9 +244,14 @@ async function getRules(): Promise<RuleRow[]> {
   const { data } = await supabase
     .from("commission_rules")
     .select(
-      "id, code, name, version, listing_type, city, pool_mode, pool_percent, pool_fixed_amount, min_pool_amount, visit_model, is_active, policy",
+      `id, code, name, description, version, listing_type, city, pool_mode, pool_percent,
+       pool_fixed_amount, min_pool_amount, max_pool_amount, priority, visit_model, is_active, policy`,
     )
-    .order("priority", { ascending: true });
+    // Live rules first, then each code's most recent version — the superseded
+    // ones stay visible because they are what past payouts were made under.
+    .order("is_active", { ascending: false })
+    .order("code", { ascending: true })
+    .order("version", { ascending: false });
   return (data ?? []) as RuleRow[];
 }
 

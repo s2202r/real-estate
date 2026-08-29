@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { findCity } from "@/data/india";
 
 /**
  * Zod schemas for commission configuration.
@@ -66,7 +67,13 @@ export const CommissionRuleFormSchema = z
     name: z.string().min(3).max(120),
     description: z.string().max(600).optional(),
     listingType: z.enum(["SALE", "RENT", "LEASE"]).optional(),
-    city: z.string().max(80).optional(),
+    // Canonicalised, because this is matched against a deal's city as a
+    // string: a rule scoped to "bangalore" would never fire.
+    city: z
+      .string()
+      .max(80)
+      .transform((value) => findCity(value)?.name ?? value)
+      .optional(),
     poolMode: z.enum(["PERCENT_OF_TRANSACTION", "FIXED_AMOUNT"]),
     poolPercent: percentage.optional(),
     poolFixedAmount: moneyString.optional(),

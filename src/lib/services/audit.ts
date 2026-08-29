@@ -34,6 +34,7 @@ export type AuditAction =
   | "deal.created" | "deal.status_changed" | "deal.closed"
   | "commission.calculated" | "commission.recalculated" | "commission.approved"
   | "commission.reversed" | "payment.recorded"
+  | "commission.rule_published" | "commission.rule_enabled" | "commission.rule_disabled"
   | "agreement.created" | "agreement.legal_reviewed" | "agreement.activated"
   | "dispute.raised" | "dispute.resolved"
   | "review.moderated"

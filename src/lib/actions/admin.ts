@@ -6,6 +6,7 @@ import { createAdminClient, isAdminClientAvailable } from "@/lib/supabase/admin"
 import { requireUserOrThrow } from "@/lib/auth/session";
 import { assertCan, type Capability } from "@/lib/auth/permissions";
 import { AdminListingEditSchema, ModerationSchema } from "@/lib/validation/listings";
+import { CommissionRuleFormSchema } from "@/lib/validation/commission";
 import { recordAudit } from "@/lib/services/audit";
 import { notify } from "@/lib/services/notifications";
 import {
@@ -889,6 +890,296 @@ export async function setInvestorStanding(
 
   revalidatePath("/admin/investors");
   return { ok: true, message: `Investor ${decision.toLowerCase()}d.` };
+}
+
+
+/* ------------------------------------------------------------------------ *
+ * Commission rules (§22, §64)
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Publish a commission rule.
+ *
+ * Editing NEVER overwrites. Saving a change publishes a NEW VERSION of the
+ * code and closes the one it supersedes, so the row a past calculation points
+ * at still says exactly what it said when the payout was computed. An agent
+ * disputing a commission three years from now can be shown the rule as it
+ * stood on the day, not the rule as it stands today.
+ *
+ * The percentages are data all the way through: nothing in the engine
+ * hard-codes a split, the policy is validated before it is written, and each
+ * calculation snapshots the policy it applied. No part of this is AI-driven.
+ *
+ * A reason is required, and the whole before/after is written to the audit log
+ * — which is also why this refuses to run without the service-role key rather
+ * than making an unaudited change to how money is divided.
+ */
+export async function saveCommissionRule(
+  _prev: ActionResult<{ id: string; version: number }> | null,
+  formData: FormData,
+): Promise<ActionResult<{ id: string; version: number }>> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
+  let user;
+  try {
+    user = await requireCapability("commission.configure");
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Not authorised." };
+  }
+
+  const parsed = CommissionRuleFormSchema.safeParse({
+    code: text(formData, "code")?.toLowerCase(),
+    name: text(formData, "name"),
+    description: text(formData, "description"),
+    listingType: text(formData, "listingType"),
+    city: text(formData, "city"),
+    poolMode: text(formData, "poolMode"),
+    poolPercent: number(formData, "poolPercent"),
+    poolFixedAmount: text(formData, "poolFixedAmount"),
+    minPoolAmount: text(formData, "minPoolAmount"),
+    maxPoolAmount: text(formData, "maxPoolAmount"),
+    priority: number(formData, "priority") ?? 100,
+    isActive: formData.get("isActive") === "on",
+    policy: {
+      roleShares: {
+        LISTING_AGENT: number(formData, "share.LISTING_AGENT"),
+        SALES_AGENT: number(formData, "share.SALES_AGENT"),
+        VISIT_POOL: number(formData, "share.VISIT_POOL"),
+        REFERRAL_AGENT: number(formData, "share.REFERRAL_AGENT"),
+        INVESTOR: number(formData, "share.INVESTOR"),
+        PLATFORM: number(formData, "share.PLATFORM"),
+      },
+      visitModel: text(formData, "visitModel"),
+      visitTiers: {
+        latest: number(formData, "tier.latest"),
+        previous: number(formData, "tier.previous"),
+        earlier: number(formData, "tier.earlier"),
+      },
+      scoreWeights: {
+        recency: number(formData, "weight.recency"),
+        customerConfirmation: number(formData, "weight.customerConfirmation"),
+        duration: number(formData, "weight.duration"),
+        outcome: number(formData, "weight.outcome"),
+        interest: number(formData, "weight.interest"),
+        negotiation: number(formData, "weight.negotiation"),
+      },
+      unallocatedStrategy: text(formData, "unallocatedStrategy"),
+      targetVisitMinutes: number(formData, "targetVisitMinutes"),
+    },
+  });
+
+  const reason = text(formData, "reason") ?? "";
+  if (!parsed.success || reason.length < 5) {
+    const fieldErrors = parsed.success
+      ? {}
+      : (parsed.error.flatten().fieldErrors as Record<string, string[]>);
+
+    // Nested policy issues flatten into nothing useful, so surface them by path.
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        if (issue.path[0] === "policy") {
+          fieldErrors.policy = [`${issue.path.slice(1).join(".")}: ${issue.message}`];
+          break;
+        }
+      }
+    }
+    if (reason.length < 5) {
+      fieldErrors.reason = ["Say why this is changing — it goes on the record."];
+    }
+
+    return { ok: false, message: "Please check the fields below.", fieldErrors };
+  }
+
+  const input = parsed.data;
+  const supersedesId = text(formData, "ruleId");
+  const supabase = await adminSupabase();
+
+  const { data: siblings } = await supabase
+    .from("commission_rules")
+    .select("id, code, version, name, is_active, pool_mode, pool_percent, pool_fixed_amount, effective_from, policy")
+    .eq("code", input.code)
+    .order("version", { ascending: false });
+
+  const versions = siblings ?? [];
+  const previous = supersedesId ? versions.find((rule) => rule.id === supersedesId) : undefined;
+
+  if (supersedesId && !previous) {
+    return { ok: false, message: "That rule no longer exists. Reload the page." };
+  }
+  if (!supersedesId && versions.length > 0) {
+    return {
+      ok: false,
+      message: `The code "${input.code}" is already in use. Edit that rule instead — saving publishes a new version of it.`,
+      fieldErrors: { code: ["Already in use."] },
+    };
+  }
+
+  const version = (versions[0]?.version ?? 0) + 1;
+  const now = new Date();
+
+  const { data: created, error } = await supabase
+    .from("commission_rules")
+    .insert({
+      code: input.code,
+      name: input.name,
+      description: input.description || null,
+      version,
+      listing_type: (input.listingType ?? null) as Enums["listing_type"] | null,
+      city: input.city || null,
+      pool_mode: input.poolMode,
+      pool_percent: input.poolPercent != null ? String(input.poolPercent) : null,
+      pool_fixed_amount: input.poolFixedAmount || null,
+      min_pool_amount: input.minPoolAmount || null,
+      max_pool_amount: input.maxPoolAmount || null,
+      visit_model: input.policy.visitModel,
+      policy: input.policy,
+      priority: input.priority,
+      is_active: input.isActive,
+      effective_from: now.toISOString(),
+      created_by: user.id,
+    })
+    .select("id, version")
+    .single();
+
+  if (error || !created) {
+    return { ok: false, message: `Could not publish the rule: ${error?.message ?? "unknown error"}` };
+  }
+
+  if (previous) {
+    // Close the version this replaces. The window must be non-empty, so a
+    // version published and replaced within the same second still ends after
+    // it began rather than failing the constraint.
+    const closeAt = new Date(
+      Math.max(now.getTime(), new Date(previous.effective_from).getTime() + 1000),
+    );
+    await supabase
+      .from("commission_rules")
+      .update({ is_active: false, effective_until: closeAt.toISOString() })
+      .eq("id", previous.id);
+  }
+
+  await recordAudit({
+    action: "commission.rule_published",
+    entityType: "COMMISSION_RULE",
+    entityId: created.id,
+    entityCode: `${input.code} v${created.version}`,
+    actorId: user.id,
+    actorRole: "admin",
+    before: previous
+      ? {
+          version: previous.version,
+          poolMode: previous.pool_mode,
+          poolPercent: previous.pool_percent,
+          poolFixedAmount: previous.pool_fixed_amount,
+          policy: previous.policy,
+        }
+      : null,
+    after: {
+      version: created.version,
+      poolMode: input.poolMode,
+      poolPercent: input.poolPercent ?? null,
+      poolFixedAmount: input.poolFixedAmount ?? null,
+      policy: input.policy,
+    },
+    reason,
+  });
+
+  revalidatePath("/admin/commissions");
+  return {
+    ok: true,
+    message: previous
+      ? `Published v${created.version}. Deals closed from now on use it; everything already calculated is untouched.`
+      : `Rule published as v${created.version}.`,
+    data: { id: created.id, version: created.version },
+  };
+}
+
+/**
+ * Turn a rule on or off without publishing a version.
+ *
+ * Switching a rule off is not an edit to its terms — it is a decision to stop
+ * applying them — so it does not fork the history. It still needs a reason and
+ * is still audited: a deal that closes tomorrow may fall to a different rule
+ * because of it.
+ */
+export async function setCommissionRuleActive(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
+  let user;
+  try {
+    user = await requireCapability("commission.configure");
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Not authorised." };
+  }
+
+  const ruleId = text(formData, "ruleId");
+  const active = formData.get("active") === "1";
+  const reason = text(formData, "reason") ?? "";
+
+  if (!ruleId) return { ok: false, message: "No rule given." };
+  if (reason.length < 5) {
+    return { ok: false, message: "Say why — a change to how money is divided is always recorded." };
+  }
+
+  const supabase = await adminSupabase();
+  const { data: before } = await supabase
+    .from("commission_rules")
+    .select("id, code, version, is_active")
+    .eq("id", ruleId)
+    .maybeSingle();
+
+  if (!before) return { ok: false, message: "Rule not found." };
+  if (before.is_active === active) {
+    return { ok: true, message: active ? "Already active." : "Already inactive." };
+  }
+
+  const { error } = await supabase
+    .from("commission_rules")
+    .update({
+      is_active: active,
+      // Reactivating reopens the window; deactivating leaves it open, because
+      // a rule switched off may be switched back on.
+      ...(active ? { effective_until: null } : {}),
+    })
+    .eq("id", ruleId);
+
+  if (error) return { ok: false, message: `Could not change the rule: ${error.message}` };
+
+  await recordAudit({
+    action: active ? "commission.rule_enabled" : "commission.rule_disabled",
+    entityType: "COMMISSION_RULE",
+    entityId: ruleId,
+    entityCode: `${before.code} v${before.version}`,
+    actorId: user.id,
+    actorRole: "admin",
+    before: { isActive: before.is_active },
+    after: { isActive: active },
+    reason,
+  });
+
+  revalidatePath("/admin/commissions");
+  return { ok: true, message: active ? "Rule is active." : "Rule is no longer applied." };
+}
+
+/** Trimmed form field, or undefined when it was left empty. */
+function text(formData: FormData, key: string): string | undefined {
+  const raw = formData.get(key);
+  if (typeof raw !== "string") return undefined;
+  const value = raw.trim();
+  return value === "" ? undefined : value;
+}
+
+/** Numeric form field. An empty box is absent, not zero. */
+function number(formData: FormData, key: string): number | undefined {
+  const raw = text(formData, key);
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : Number.NaN;
 }
 
 export async function adminSupabase() {
