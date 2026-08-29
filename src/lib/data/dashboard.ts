@@ -1,8 +1,12 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, isAdminClientAvailable } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/config/env";
 import { getSessionUser } from "@/lib/auth/session";
+import { isAdmin } from "@/lib/auth/permissions";
 
 /**
  * Dashboard aggregates.
@@ -177,113 +181,247 @@ export async function getAgentDashboard(agentId: string): Promise<AgentDashboard
   };
 }
 
+/** A figure an operator can act on: how much of it is the demo seed. */
+export interface Tally {
+  /** Everything in the table. */
+  readonly total: number;
+  /** The part of it planted by the demo seed (`is_demo`). */
+  readonly demo: number;
+  /** total − demo: the real business. */
+  readonly real: number;
+}
+
+export interface ReadFailure {
+  readonly source: string;
+  readonly message: string;
+}
+
 export interface AdminDashboardData {
-  readonly totalProperties: number;
-  readonly activeListings: number;
+  /* Work queues. */
   readonly pendingListings: number;
   readonly pendingAgentVerifications: number;
   readonly duplicateCandidates: number;
   readonly openDisputes: number;
   readonly pendingReviews: number;
-  readonly customers: number;
-  readonly agents: number;
-  readonly investors: number;
-  readonly leads: number;
-  readonly visits: number;
-  readonly deals: number;
-  readonly closedDeals: number;
   readonly failedNotifications: number;
-  readonly unreadNotifications: number;
+
+  /* Inventory and network, split real vs demo. */
+  readonly properties: Tally;
+  readonly activeListings: Tally;
+  readonly customers: Tally;
+  readonly agents: Tally;
+  readonly investors: Tally;
+  readonly leads: Tally;
+  readonly visits: Tally;
+  readonly deals: Tally;
+  readonly closedDeals: Tally;
+
+  /**
+   * Counts that could not be read. A failed query used to return 0, which on
+   * a dashboard is indistinguishable from "none" — the one reading an operator
+   * must never be given by accident.
+   */
+  readonly errors: readonly ReadFailure[];
 }
 
-export async function getAdminDashboard(): Promise<AdminDashboardData> {
-  const empty: AdminDashboardData = {
-    totalProperties: 0,
-    activeListings: 0,
-    pendingListings: 0,
-    pendingAgentVerifications: 0,
-    duplicateCandidates: 0,
-    openDisputes: 0,
-    pendingReviews: 0,
-    customers: 0,
-    agents: 0,
-    investors: 0,
-    leads: 0,
-    visits: 0,
-    deals: 0,
-    closedDeals: 0,
-    failedNotifications: 0,
-    unreadNotifications: 0,
-  };
-  if (!isSupabaseConfigured()) return empty;
+const EMPTY_TALLY: Tally = { total: 0, demo: 0, real: 0 };
 
-  const supabase = await createClient();
+const EMPTY_ADMIN_DASHBOARD: AdminDashboardData = {
+  pendingListings: 0,
+  pendingAgentVerifications: 0,
+  duplicateCandidates: 0,
+  openDisputes: 0,
+  pendingReviews: 0,
+  failedNotifications: 0,
+  properties: EMPTY_TALLY,
+  activeListings: EMPTY_TALLY,
+  customers: EMPTY_TALLY,
+  agents: EMPTY_TALLY,
+  investors: EMPTY_TALLY,
+  leads: EMPTY_TALLY,
+  visits: EMPTY_TALLY,
+  deals: EMPTY_TALLY,
+  closedDeals: EMPTY_TALLY,
+  errors: [],
+};
+
+interface CountReply {
+  count: number | null;
+  error: { message: string } | null;
+}
+
+/**
+ * Platform-wide counts for the admin overview.
+ *
+ * READ THROUGH THE SERVICE-ROLE CLIENT, deliberately. Every count here is
+ * meant to be the whole platform, and under RLS each one is filtered by a
+ * per-row `is_admin()` check — so a role that has not been granted, or a
+ * policy that misses a case, quietly turns "1,284 customers" into "0" with no
+ * error anywhere. An overview that can silently under-report is worse than no
+ * overview. The caller's admin status is asserted here first; the RLS client
+ * remains the fallback when the service key is absent.
+ *
+ * Failures are collected rather than swallowed, and the demo seed is counted
+ * separately, because "12 listings" means something quite different when eight
+ * of them were planted by `seed.sql`.
+ *
+ * Wrapped in `cache()` because the admin layout and the overview page both
+ * want these figures: without it one page load runs the whole set of counts
+ * twice.
+ */
+export const getAdminDashboard = cache(async (): Promise<AdminDashboardData> => {
+  if (!isSupabaseConfigured()) return EMPTY_ADMIN_DASHBOARD;
+
+  // This client bypasses RLS, so authorisation is this check and nothing else.
+  const user = await getSessionUser();
+  if (!user || !isAdmin(user)) return EMPTY_ADMIN_DASHBOARD;
+
+  const supabase = isAdminClientAvailable() ? createAdminClient() : await createClient();
   const head = { count: "exact" as const, head: true };
 
   const [
-    properties, activeListings, pendingListings, verifications, duplicates,
-    disputes, reviews, customers, agents, investors, leads, visits, deals,
-    closedDeals, failedNotifications, unread,
+    pendingListings, verifications, duplicates, disputes, reviews, failedNotifications,
+    properties, propertiesDemo,
+    activeListings, activeListingsDemo,
+    customers, customersDemo,
+    agents, agentsDemo,
+    investors, investorsDemo,
+    leads, leadsDemo,
+    visits, visitsDemo,
+    deals, dealsDemo,
+    closedDeals, closedDealsDemo,
   ] = await Promise.all([
-    supabase.from("property_passports").select("id", head),
-    supabase.from("listings").select("id", head).eq("status", "VERIFIED"),
     supabase.from("listings").select("id", head).in("status", ["SUBMITTED", "UNDER_REVIEW"]),
     supabase.from("agent_verifications").select("id", head).in("status", ["SUBMITTED", "UNDER_REVIEW"]),
     supabase.from("property_duplicate_candidates").select("id", head).eq("status", "PENDING"),
     supabase.from("disputes").select("id", head).in("status", ["OPEN", "UNDER_REVIEW", "ESCALATED"]),
     supabase.from("reviews").select("id", head).eq("moderation_status", "PENDING"),
-    supabase.from("customers").select("id", head),
-    supabase.from("agents").select("id", head),
-    supabase.from("investors").select("id", head),
-    supabase.from("leads").select("id", head),
-    supabase.from("visits").select("id", head),
-    supabase.from("deals").select("id", head),
-    supabase.from("deals").select("id", head).eq("status", "CLOSED_WON"),
     supabase.from("notifications").select("id", head).eq("status", "FAILED"),
-    supabase.from("notifications").select("id", head).is("read_at", null),
+
+    supabase.from("property_passports").select("id", head),
+    supabase.from("property_passports").select("id", head).eq("is_demo", true),
+    supabase.from("listings").select("id", head).eq("status", "VERIFIED"),
+    supabase.from("listings").select("id", head).eq("status", "VERIFIED").eq("is_demo", true),
+    supabase.from("customers").select("id", head),
+    supabase.from("customers").select("id", head).eq("is_demo", true),
+    supabase.from("agents").select("id", head),
+    supabase.from("agents").select("id", head).eq("is_demo", true),
+    supabase.from("investors").select("id", head),
+    supabase.from("investors").select("id", head).eq("is_demo", true),
+    supabase.from("leads").select("id", head),
+    supabase.from("leads").select("id", head).eq("is_demo", true),
+    supabase.from("visits").select("id", head),
+    supabase.from("visits").select("id", head).eq("is_demo", true),
+    supabase.from("deals").select("id", head),
+    supabase.from("deals").select("id", head).eq("is_demo", true),
+    supabase.from("deals").select("id", head).eq("status", "CLOSED_WON"),
+    supabase.from("deals").select("id", head).eq("status", "CLOSED_WON").eq("is_demo", true),
   ]);
 
+  const errors: ReadFailure[] = [];
+
   return {
-    totalProperties: properties.count ?? 0,
-    activeListings: activeListings.count ?? 0,
-    pendingListings: pendingListings.count ?? 0,
-    pendingAgentVerifications: verifications.count ?? 0,
-    duplicateCandidates: duplicates.count ?? 0,
-    openDisputes: disputes.count ?? 0,
-    pendingReviews: reviews.count ?? 0,
-    customers: customers.count ?? 0,
-    agents: agents.count ?? 0,
-    investors: investors.count ?? 0,
-    leads: leads.count ?? 0,
-    visits: visits.count ?? 0,
-    deals: deals.count ?? 0,
-    closedDeals: closedDeals.count ?? 0,
-    failedNotifications: failedNotifications.count ?? 0,
-    unreadNotifications: unread.count ?? 0,
+    pendingListings: only("listings awaiting review", pendingListings, errors),
+    pendingAgentVerifications: only("agent verifications", verifications, errors),
+    duplicateCandidates: only("duplicate candidates", duplicates, errors),
+    openDisputes: only("disputes", disputes, errors),
+    pendingReviews: only("reviews", reviews, errors),
+    failedNotifications: only("notifications", failedNotifications, errors),
+
+    properties: tally("property passports", properties, propertiesDemo, errors),
+    activeListings: tally("live listings", activeListings, activeListingsDemo, errors),
+    customers: tally("customers", customers, customersDemo, errors),
+    agents: tally("agents", agents, agentsDemo, errors),
+    investors: tally("investors", investors, investorsDemo, errors),
+    leads: tally("leads", leads, leadsDemo, errors),
+    visits: tally("visits", visits, visitsDemo, errors),
+    deals: tally("deals", deals, dealsDemo, errors),
+    closedDeals: tally("closed deals", closedDeals, closedDealsDemo, errors),
+    errors,
   };
+});
+
+/** One count, with a failure recorded rather than rendered as zero. */
+function only(source: string, reply: CountReply, errors: ReadFailure[]): number {
+  if (reply.error) {
+    errors.push({ source, message: reply.error.message });
+    return 0;
+  }
+  return reply.count ?? 0;
+}
+
+function tally(
+  source: string,
+  total: CountReply,
+  demo: CountReply,
+  errors: ReadFailure[],
+): Tally {
+  const totalCount = only(source, total, errors);
+  const demoCount = demo.error ? 0 : (demo.count ?? 0);
+  return { total: totalCount, demo: demoCount, real: Math.max(0, totalCount - demoCount) };
+}
+
+export interface MarketplaceTotals {
+  /** Value of closed deals, in minor units. */
+  readonly gmvMinor: number;
+  readonly gmvDemoMinor: number;
+  readonly commissionMinor: number;
+  readonly commissionDemoMinor: number;
+  readonly platformMinor: number;
 }
 
 /** Gross merchandise value and platform commission, for the admin overview. */
-export async function getMarketplaceTotals() {
-  if (!isSupabaseConfigured()) return { gmvMinor: 0, commissionMinor: 0, platformMinor: 0 };
+export async function getMarketplaceTotals(): Promise<MarketplaceTotals> {
+  const empty: MarketplaceTotals = {
+    gmvMinor: 0,
+    gmvDemoMinor: 0,
+    commissionMinor: 0,
+    commissionDemoMinor: 0,
+    platformMinor: 0,
+  };
+  if (!isSupabaseConfigured()) return empty;
 
-  const supabase = await createClient();
+  const user = await getSessionUser();
+  if (!user || !isAdmin(user)) return empty;
+
+  const supabase = isAdminClientAvailable() ? createAdminClient() : await createClient();
 
   const [deals, ledger] = await Promise.all([
-    supabase.from("deals").select("final_price").eq("status", "CLOSED_WON"),
-    supabase.from("commission_ledger").select("amount_minor, role").eq("entry_type", "EARNING"),
+    supabase.from("deals").select("final_price, is_demo").eq("status", "CLOSED_WON"),
+    // The ledger has no demo flag of its own; the deal it belongs to has one.
+    supabase
+      .from("commission_ledger")
+      .select("amount_minor, role, deals!inner ( is_demo )")
+      .eq("entry_type", "EARNING"),
   ]);
 
-  const gmvMinor = (deals.data ?? []).reduce(
+  const closed = deals.data ?? [];
+  const gmvMinor = closed.reduce(
     (acc, deal) => acc + Math.round(Number(deal.final_price ?? 0) * 100),
     0,
   );
-  const commissionMinor = (ledger.data ?? []).reduce((acc, row) => acc + row.amount_minor, 0);
-  const platformMinor = (ledger.data ?? [])
+  const gmvDemoMinor = closed
+    .filter((deal) => deal.is_demo)
+    .reduce((acc, deal) => acc + Math.round(Number(deal.final_price ?? 0) * 100), 0);
+
+  const entries = (ledger.data ?? []) as unknown as {
+    amount_minor: number;
+    role: string;
+    deals: { is_demo: boolean } | { is_demo: boolean }[] | null;
+  }[];
+
+  const isDemoEntry = (entry: (typeof entries)[number]) =>
+    Array.isArray(entry.deals) ? Boolean(entry.deals[0]?.is_demo) : Boolean(entry.deals?.is_demo);
+
+  const commissionMinor = entries.reduce((acc, row) => acc + row.amount_minor, 0);
+  const commissionDemoMinor = entries
+    .filter(isDemoEntry)
+    .reduce((acc, row) => acc + row.amount_minor, 0);
+  const platformMinor = entries
     .filter((row) => row.role === "PLATFORM")
     .reduce((acc, row) => acc + row.amount_minor, 0);
 
-  return { gmvMinor, commissionMinor, platformMinor };
+  return { gmvMinor, gmvDemoMinor, commissionMinor, commissionDemoMinor, platformMinor };
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
