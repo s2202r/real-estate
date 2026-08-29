@@ -22,11 +22,12 @@ import type { Json } from "@/types/database";
 
 export type AuditAction =
   | "listing.submitted" | "listing.approved" | "listing.rejected" | "listing.suspended"
+  | "listing.reinstated" | "listing.edited_by_admin"
   | "listing.updated" | "listing.shared" | "listing.share_approved" | "listing.share_rejected"
   | "property.created" | "property.verified" | "property.rejected" | "property.merged"
   | "agent.verification_submitted" | "agent.verified" | "agent.verification_rejected"
-  | "agent.badge_granted" | "agent.suspended"
-  | "investor.verified"
+  | "agent.badge_granted" | "agent.suspended" | "agent.reinstated"
+  | "investor.verified" | "investor.rejected" | "investor.suspended" | "investor.reinstated"
   | "lead.created" | "lead.assigned" | "lead.stage_changed" | "lead.contact_revealed"
   | "visit.requested" | "visit.offered" | "visit.accepted" | "visit.checked_in"
   | "visit.checked_out" | "visit.qualified" | "visit.disqualified" | "visit.cancelled"

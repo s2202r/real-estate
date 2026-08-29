@@ -23,6 +23,7 @@ export type NotificationEvent =
   | "lead.received"
   | "listing.approved"
   | "listing.rejected"
+  | "listing.updated"
   | "visit.booked"
   | "visit.opportunity"
   | "visit.accepted"
@@ -36,6 +37,8 @@ export type NotificationEvent =
   | "share.approved"
   | "requirement.match"
   | "agent.verified"
+  | "agent.suspended"
+  | "agent.reinstated"
   | "dispute.updated"
   | "investor.opportunity"
   | "exclusive.expiring";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Check, Loader2, Pause, X } from "lucide-react";
+import { Check, Loader2, Pause, Play, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,9 +19,12 @@ import type { ActionResult } from "@/lib/actions/leads";
 export function ModerationPanel({
   listingId,
   suggestedScore,
+  status,
 }: {
   listingId: string;
   suggestedScore: number;
+  /** Drives which decisions are offered: a live listing needs no "approve". */
+  status: string;
 }) {
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     moderateListing,
@@ -76,10 +79,19 @@ export function ModerationPanel({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" name="decision" value="APPROVE" size="sm" disabled={pending}>
-          {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
-          Approve
-        </Button>
+        {status === "SUSPENDED" ? (
+          // The way back. Without it a suspension was a one-way door and the
+          // only remedy was editing the database by hand.
+          <Button type="submit" name="decision" value="REINSTATE" size="sm" disabled={pending}>
+            {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Play aria-hidden />}
+            Reinstate
+          </Button>
+        ) : (
+          <Button type="submit" name="decision" value="APPROVE" size="sm" disabled={pending}>
+            {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
+            {status === "VERIFIED" ? "Re-approve" : "Approve"}
+          </Button>
+        )}
         <Button
           type="submit"
           name="decision"
@@ -91,17 +103,19 @@ export function ModerationPanel({
           <X aria-hidden />
           Reject
         </Button>
-        <Button
-          type="submit"
-          name="decision"
-          value="SUSPEND"
-          size="sm"
-          variant="ghost"
-          disabled={pending}
-        >
-          <Pause aria-hidden />
-          Suspend
-        </Button>
+        {status !== "SUSPENDED" && (
+          <Button
+            type="submit"
+            name="decision"
+            value="SUSPEND"
+            size="sm"
+            variant="ghost"
+            disabled={pending}
+          >
+            <Pause aria-hidden />
+            Suspend
+          </Button>
+        )}
       </div>
     </form>
   );

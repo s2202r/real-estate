@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { VerificationBadgeList } from "@/components/shared/verification-badge";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { RecomputeStandingButton } from "./recompute-button";
 import { requireCapability } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -77,7 +79,14 @@ export default async function AdminAgentsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <RecomputeStandingButton agentId={agent.id} />
+                    <div className="flex items-center justify-end gap-2">
+                      {/* The profile is where a suspension decision is made:
+                          the metrics behind it are not in this table. */}
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/admin/agents/${agent.id}`}>Open</Link>
+                      </Button>
+                      <RecomputeStandingButton agentId={agent.id} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

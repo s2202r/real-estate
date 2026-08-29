@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ModerationPanel } from "./moderation-panel";
+import { ListingAdminControls } from "./listing-admin-controls";
 import { requireCapability } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
@@ -107,6 +108,7 @@ export default async function AdminListingsPage() {
                     <ModerationPanel
                       listingId={listing.id}
                       suggestedScore={completeness.score}
+                      status={listing.status}
                     />
                   </CardContent>
                 </Card>
@@ -131,7 +133,10 @@ export default async function AdminListingsPage() {
                       {listing.rejection_reason ? ` · ${listing.rejection_reason}` : ""}
                     </p>
                   </div>
-                  <StatusBadge kind="listing" status={listing.status} />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <StatusBadge kind="listing" status={listing.status} />
+                    <ListingAdminControls listing={listing} />
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -152,6 +157,9 @@ interface ListingRow {
   city: string;
   locality: string;
   description: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  built_up_area: string | null;
   cover_image_url: string | null;
   floor_plan_url: string | null;
   youtube_url: string | null;
@@ -170,6 +178,7 @@ async function getPending(): Promise<ListingRow[]> {
     .from("listings")
     .select(
       `id, reference_code, title, status, listing_type, price, city, locality, description,
+       bedrooms, bathrooms, built_up_area,
        cover_image_url, floor_plan_url, youtube_url, virtual_tour_url, latitude, longitude,
        carpet_area, rejection_reason, agents ( agency_name )`,
     )
@@ -186,6 +195,7 @@ async function getRecentlyModerated(): Promise<ListingRow[]> {
     .from("listings")
     .select(
       `id, reference_code, title, status, listing_type, price, city, locality, description,
+       bedrooms, bathrooms, built_up_area,
        cover_image_url, floor_plan_url, youtube_url, virtual_tour_url, latitude, longitude,
        carpet_area, rejection_reason, agents ( agency_name )`,
     )

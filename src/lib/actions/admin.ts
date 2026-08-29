@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, isAdminClientAvailable } from "@/lib/supabase/admin";
 import { requireUserOrThrow } from "@/lib/auth/session";
 import { assertCan, type Capability } from "@/lib/auth/permissions";
-import { ModerationSchema } from "@/lib/validation/listings";
+import { AdminListingEditSchema, ModerationSchema } from "@/lib/validation/listings";
 import { recordAudit } from "@/lib/services/audit";
 import { notify } from "@/lib/services/notifications";
 import {
@@ -81,7 +81,11 @@ export async function moderateListing(
   if (!before) return { ok: false, message: "Listing not found." };
 
   const nextStatus: Enums["listing_status"] =
-    decision === "APPROVE" ? "VERIFIED" : decision === "REJECT" ? "REJECTED" : "SUSPENDED";
+    decision === "APPROVE" || decision === "REINSTATE"
+      ? "VERIFIED"
+      : decision === "REJECT"
+        ? "REJECTED"
+        : "SUSPENDED";
 
   const { error } = await admin
     .from("listings")
@@ -92,6 +96,8 @@ export async function moderateListing(
       verification_notes: notes ?? null,
       rejection_reason: decision === "REJECT" ? (rejectionReason ?? null) : null,
       verification_score: verificationScore != null ? String(verificationScore) : undefined,
+      // Reinstating keeps the original publication date: the listing was live
+      // before, and resetting it would reorder the whole "newest" feed.
       published_at: decision === "APPROVE" ? new Date().toISOString() : undefined,
     })
     .eq("id", listingId);
@@ -116,7 +122,9 @@ export async function moderateListing(
         ? "listing.approved"
         : decision === "REJECT"
           ? "listing.rejected"
-          : "listing.suspended",
+          : decision === "REINSTATE"
+            ? "listing.reinstated"
+            : "listing.suspended",
     entityType: "LISTING",
     entityId: listingId,
     entityCode: before.reference_code,
@@ -131,7 +139,10 @@ export async function moderateListing(
   if (agentUserId) {
     await notify({
       userId: agentUserId,
-      event: decision === "APPROVE" ? "listing.approved" : "listing.rejected",
+      event:
+        decision === "APPROVE" || decision === "REINSTATE"
+          ? "listing.approved"
+          : "listing.rejected",
       variables: {
         listingTitle: before.title,
         reason: rejectionReason ?? notes ?? "See the moderation notes.",
@@ -148,9 +159,11 @@ export async function moderateListing(
     message:
       decision === "APPROVE"
         ? "Listing approved and published."
-        : decision === "REJECT"
-          ? "Listing rejected. The agent has been told why."
-          : "Listing suspended.",
+        : decision === "REINSTATE"
+          ? "Listing reinstated and live again."
+          : decision === "REJECT"
+            ? "Listing rejected. The agent has been told why."
+            : "Listing suspended.",
   };
 }
 
@@ -593,6 +606,285 @@ function humanise(value: string): string {
 }
 
 /** Read-only helper used by admin pages that need cross-tenant reads. */
+/* ------------------------------------------------------------------------ *
+ * Correcting a listing (§9)
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Edit an agent's listing as an administrator.
+ *
+ * This exists because moderation is not always binary: a listing can be sound
+ * except for a price that contradicts the paperwork, and rejecting it costs
+ * the agent a re-submission and the customer a day.
+ *
+ * Three constraints make it safe to have at all:
+ *
+ *  - The editable set is NARROW. Ownership, agent, passport, verification
+ *    score and status are not here — changing those is a moderation decision
+ *    or a transfer, and each has its own trail.
+ *  - A reason is REQUIRED, and the previous values are written to the audit
+ *    log beside the new ones. "Who changed this and why" must be answerable.
+ *  - The agent is TOLD. Someone else editing your listing without notice is
+ *    how a marketplace loses its sellers.
+ */
+export async function updateListingAsAdmin(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
+  let user;
+  try {
+    user = await requireCapability("listing.moderate");
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Not authorised." };
+  }
+
+  const parsed = AdminListingEditSchema.safeParse({
+    listingId: formData.get("listingId"),
+    title: formData.get("title"),
+    description: formData.get("description") || undefined,
+    price: formData.get("price"),
+    isNegotiable: formData.get("isNegotiable") === "on",
+    bedrooms: formData.get("bedrooms") || undefined,
+    bathrooms: formData.get("bathrooms") || undefined,
+    builtUpArea: formData.get("builtUpArea") || undefined,
+    locality: formData.get("locality"),
+    city: formData.get("city"),
+    reason: formData.get("reason"),
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Please check the fields below.",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const input = parsed.data;
+  const admin = await adminSupabase();
+
+  const { data: before } = await admin
+    .from("listings")
+    .select(
+      "id, reference_code, title, description, price, bedrooms, bathrooms, built_up_area, locality, city, agents ( user_id )",
+    )
+    .eq("id", input.listingId)
+    .maybeSingle();
+
+  if (!before) return { ok: false, message: "Listing not found." };
+
+  const { error } = await admin
+    .from("listings")
+    .update({
+      title: input.title,
+      description: input.description || null,
+      price: String(input.price),
+      is_negotiable: input.isNegotiable ?? false,
+      bedrooms: input.bedrooms ?? null,
+      bathrooms: input.bathrooms ?? null,
+      built_up_area: input.builtUpArea != null ? String(input.builtUpArea) : null,
+      locality: input.locality,
+      city: input.city,
+    })
+    .eq("id", input.listingId);
+
+  if (error) return { ok: false, message: `Could not save the changes: ${error.message}` };
+
+  await recordAudit({
+    action: "listing.edited_by_admin",
+    entityType: "LISTING",
+    entityId: input.listingId,
+    entityCode: before.reference_code,
+    actorId: user.id,
+    actorRole: "admin",
+    before: {
+      title: before.title,
+      price: before.price,
+      bedrooms: before.bedrooms,
+      bathrooms: before.bathrooms,
+      built_up_area: before.built_up_area,
+      locality: before.locality,
+      city: before.city,
+    },
+    after: {
+      title: input.title,
+      price: String(input.price),
+      bedrooms: input.bedrooms ?? null,
+      bathrooms: input.bathrooms ?? null,
+      built_up_area: input.builtUpArea ?? null,
+      locality: input.locality,
+      city: input.city,
+    },
+    reason: input.reason,
+  });
+
+  const agentUserId = (before.agents as { user_id?: string } | null)?.user_id;
+  if (agentUserId) {
+    await notify({
+      userId: agentUserId,
+      event: "listing.updated",
+      variables: { listingTitle: input.title, reason: input.reason },
+      actionUrl: "/agent/properties",
+      entityType: "LISTING",
+      entityId: input.listingId,
+    });
+  }
+
+  revalidatePath("/admin/listings");
+  revalidatePath("/agent/properties");
+  return { ok: true, message: "Listing updated. The agent has been notified." };
+}
+
+/* ------------------------------------------------------------------------ *
+ * Account standing: agents and investors
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Suspend or reinstate an agent's account.
+ *
+ * Separate from verification. A verification decision answers "are they who
+ * they say they are"; this answers "may they operate here right now", and the
+ * two move independently — a verified agent can still be suspended for
+ * conduct, and reinstating them must not silently re-grant a badge.
+ *
+ * A suspended agent disappears from the public directory, because the view is
+ * scoped to ACTIVE. Their listings are NOT touched: taking down inventory is
+ * a separate decision with its own consequences for customers mid-enquiry.
+ */
+export async function setAgentStatus(
+  agentId: string,
+  status: Enums["account_status"],
+  reason: string,
+): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
+  let user;
+  try {
+    user = await requireCapability("user.manage");
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Not authorised." };
+  }
+
+  if (reason.trim().length < 5) {
+    return { ok: false, message: "Give a reason — it goes on the record." };
+  }
+
+  const admin = await adminSupabase();
+  const { data: before } = await admin
+    .from("agents")
+    .select("id, slug, status, user_id")
+    .eq("id", agentId)
+    .maybeSingle();
+
+  if (!before) return { ok: false, message: "Agent not found." };
+
+  const { error } = await admin.from("agents").update({ status }).eq("id", agentId);
+  if (error) return { ok: false, message: `Could not update the agent: ${error.message}` };
+
+  await recordAudit({
+    action: status === "SUSPENDED" ? "agent.suspended" : "agent.reinstated",
+    entityType: "AGENT",
+    entityId: agentId,
+    entityCode: before.slug,
+    actorId: user.id,
+    actorRole: "admin",
+    before: { status: before.status },
+    after: { status },
+    reason,
+  });
+
+  await notify({
+    userId: before.user_id,
+    event: status === "SUSPENDED" ? "agent.suspended" : "agent.reinstated",
+    variables: { reason },
+    actionUrl: "/agent/profile",
+    entityType: "AGENT",
+    entityId: agentId,
+  });
+
+  revalidatePath("/admin/agents");
+  revalidatePath("/agents");
+  return {
+    ok: true,
+    message: status === "SUSPENDED" ? "Agent suspended." : "Agent reinstated.",
+  };
+}
+
+/**
+ * Approve, reject or suspend an investor.
+ *
+ * The investor module is legally gated (docs/LEGAL_REVIEW.md L1) and ships
+ * disabled, so this is the control that exists for the day it is switched on —
+ * not a path around that gate. Approving an investor grants them nothing on
+ * its own; it records that their identity and standing were reviewed.
+ */
+export async function setInvestorStanding(
+  investorId: string,
+  decision: "APPROVE" | "REJECT" | "SUSPEND" | "REINSTATE",
+  reason: string,
+): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
+  let user;
+  try {
+    user = await requireCapability("investor.verify");
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Not authorised." };
+  }
+
+  if (reason.trim().length < 5) {
+    return { ok: false, message: "Give a reason — it goes on the record." };
+  }
+
+  const admin = await adminSupabase();
+  const { data: before } = await admin
+    .from("investors")
+    .select("id, entity_name, status, verification_status, user_id")
+    .eq("id", investorId)
+    .maybeSingle();
+
+  if (!before) return { ok: false, message: "Investor not found." };
+
+  const patch =
+    decision === "APPROVE"
+      ? { verification_status: "APPROVED" as const, status: "ACTIVE" as const }
+      : decision === "REJECT"
+        ? { verification_status: "REJECTED" as const }
+        : decision === "SUSPEND"
+          ? { status: "SUSPENDED" as const }
+          : { status: "ACTIVE" as const };
+
+  const { error } = await admin.from("investors").update(patch).eq("id", investorId);
+  if (error) return { ok: false, message: `Could not update the investor: ${error.message}` };
+
+  await recordAudit({
+    action:
+      decision === "APPROVE"
+        ? "investor.verified"
+        : decision === "REJECT"
+          ? "investor.rejected"
+          : decision === "SUSPEND"
+            ? "investor.suspended"
+            : "investor.reinstated",
+    entityType: "INVESTOR",
+    entityId: investorId,
+    entityCode: before.entity_name ?? investorId,
+    actorId: user.id,
+    actorRole: "admin",
+    before: { status: before.status, verification_status: before.verification_status },
+    after: patch,
+    reason,
+  });
+
+  revalidatePath("/admin/investors");
+  return { ok: true, message: `Investor ${decision.toLowerCase()}d.` };
+}
+
 export async function adminSupabase() {
   await requireUserOrThrow();
   return createClient();

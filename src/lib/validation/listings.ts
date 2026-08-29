@@ -118,7 +118,9 @@ export type ListingDraftInput = z.infer<typeof ListingDraftSchema>;
 
 export const ModerationSchema = z.object({
   listingId: z.string().uuid(),
-  decision: z.enum(["APPROVE", "REJECT", "SUSPEND"]),
+  // REINSTATE is the way back from SUSPEND. Without it a suspension was a
+  // one-way door, and the only remedy was editing the database by hand.
+  decision: z.enum(["APPROVE", "REJECT", "SUSPEND", "REINSTATE"]),
   notes: z.string().trim().max(1000).optional(),
   rejectionReason: z.string().trim().max(500).optional(),
   verificationScore: z.coerce.number().min(0).max(100).optional(),
@@ -128,6 +130,32 @@ export const ModerationSchema = z.object({
 );
 
 export type ModerationInput = z.infer<typeof ModerationSchema>;
+
+/**
+ * The fields an administrator may correct on an agent's listing.
+ *
+ * Deliberately narrow. An admin fixes what is WRONG — a typo in the title, a
+ * price that contradicts the documents, a mis-typed area — and everything here
+ * is written to the audit log with its previous value. Ownership, agent,
+ * property passport, verification score and status are NOT editable through
+ * this path: changing those is a moderation decision or a transfer, and both
+ * have their own trail.
+ */
+export const AdminListingEditSchema = z.object({
+  listingId: z.string().uuid(),
+  title: z.string().trim().min(10, "Too short to be a useful title.").max(160),
+  description: z.string().trim().max(4000).optional().or(z.literal("")),
+  price: z.coerce.number().positive("A listing needs a price."),
+  isNegotiable: z.coerce.boolean().optional(),
+  bedrooms: z.coerce.number().int().min(0).max(30).optional(),
+  bathrooms: z.coerce.number().int().min(0).max(30).optional(),
+  builtUpArea: z.coerce.number().positive().optional(),
+  locality: z.string().trim().min(2).max(80),
+  city: z.string().trim().min(2).max(80),
+  reason: z.string().trim().min(5, "Say why, for the audit trail.").max(500),
+});
+
+export type AdminListingEditInput = z.infer<typeof AdminListingEditSchema>;
 
 export const ShareRequestSchema = z.object({
   listingId: z.string().uuid(),

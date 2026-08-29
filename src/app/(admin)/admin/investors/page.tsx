@@ -8,6 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { features } from "@/config/features";
 import { formatMoney, fromMajor } from "@/lib/domain/money";
+import {
+  AccountStatusControl,
+  InvestorVerificationControl,
+} from "../agents/account-status";
 
 export const metadata = { title: "Investors" };
 
@@ -56,6 +60,25 @@ export default async function AdminInvestorsPage() {
                       ? formatMoney(fromMajor(investor.ticket_size_max, "INR"))
                       : "—"}
                   </p>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+                    <Badge variant={investor.status === "ACTIVE" ? "success" : "muted"} size="sm">
+                      {investor.status}
+                    </Badge>
+                    {/* Verification and standing are separate decisions: an
+                        approved investor can still be suspended for conduct. */}
+                    <InvestorVerificationControl
+                      id={investor.id}
+                      verificationStatus={investor.verification_status}
+                      name={investor.entity_name ?? "this investor"}
+                    />
+                    <AccountStatusControl
+                      kind="investor"
+                      id={investor.id}
+                      status={investor.status}
+                      name={investor.entity_name ?? "this investor"}
+                    />
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -101,6 +124,7 @@ interface InvestorRow {
   id: string;
   entity_name: string | null;
   verification_status: string;
+  status: string;
   ticket_size_min: string | null;
   ticket_size_max: string | null;
 }
@@ -110,7 +134,7 @@ async function getInvestors(): Promise<InvestorRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("investors")
-    .select("id, entity_name, verification_status, ticket_size_min, ticket_size_max")
+    .select("id, entity_name, verification_status, status, ticket_size_min, ticket_size_max")
     .limit(100);
   return (data ?? []) as InvestorRow[];
 }
