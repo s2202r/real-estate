@@ -100,6 +100,9 @@ export function DashboardShell({
                 <DropdownMenuItem asChild>
                   <Link href="/">Back to site</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account/password">Change password</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <form action={signOut} className="w-full">

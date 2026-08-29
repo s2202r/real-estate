@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signUp } from "@/lib/actions/auth";
+import { resendSignUpCode, signUp, type SignUpOutcome } from "@/lib/actions/auth";
+import { CodeEntry } from "../login/login-form";
 import { features } from "@/config/features";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/actions/leads";
@@ -40,13 +41,37 @@ export function RegisterForm() {
   const [role, setRole] = useState<string>(
     ROLES.some((item) => item.value === initialRole) ? initialRole! : "customer",
   );
-  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(signUp, null);
+  const [state, formAction, pending] = useActionState<
+    ActionResult<SignUpOutcome> | null,
+    FormData
+  >(signUp, null);
 
   // The investor module is legally gated and ships disabled; hiding the option
   // is clearer than letting someone sign up for a product that will not appear.
   const availableRoles = ROLES.filter(
     (item) => item.value !== "investor" || features.ENABLE_INVESTOR_MODULE,
   );
+
+  // The address has to be proved before the account is any use. Asking for the
+  // code here, rather than sending them off to find a link in their inbox,
+  // keeps the whole of registration in one tab — the tab they are already in,
+  // with everything they just typed still on screen behind the step.
+  if (state?.ok && state.data?.needsVerification) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">Confirm your email</CardTitle>
+          <CardDescription>
+            One last step. It proves the address is yours, which is what lets us send you visit
+            confirmations and enquiry alerts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <VerifyEmailStep email={state.data.email} message={state.message} />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (state?.ok) {
     return (
@@ -185,4 +210,48 @@ export function RegisterForm() {
 function FieldError({ errors }: { errors?: string[] }) {
   if (!errors?.length) return null;
   return <p className="text-xs text-destructive">{errors[0]}</p>;
+}
+
+/**
+ * The verification step, with a way out of the commonest failure.
+ *
+ * The code goes missing often enough — spam folder, slow relay, a typo in the
+ * address — that "resend" is not a nicety. Resending is throttled server-side
+ * per address, so the button cannot be turned into a way to bomb an inbox.
+ */
+function VerifyEmailStep({ email, message }: { email: string; message: string }) {
+  const [resent, resendAction, resending] = useActionState<
+    ActionResult<{ email: string }> | null,
+    FormData
+  >(resendSignUpCode, null);
+
+  return (
+    <div className="space-y-4">
+      <CodeEntry email={email} purpose="signup" message={message} />
+
+      <form action={resendAction} className="border-t pt-4 text-center">
+        <input type="hidden" name="email" value={email} />
+        <p className="text-sm text-muted-foreground">Nothing arrived?</p>
+        <Button type="submit" variant="ghost" size="sm" disabled={resending}>
+          {resending && <Loader2 className="animate-spin" aria-hidden />}
+          Send the code again
+        </Button>
+        {resent && (
+          <p
+            className={resent.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive"}
+            role="status"
+          >
+            {resent.message}
+          </p>
+        )}
+      </form>
+
+      <p className="text-center text-xs text-muted-foreground">
+        Wrong address?{" "}
+        <Link href="/register" className="text-primary underline-offset-4 hover:underline">
+          Start again
+        </Link>
+      </p>
+    </div>
+  );
 }

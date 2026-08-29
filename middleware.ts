@@ -9,8 +9,10 @@ import { updateSession } from "@/lib/supabase/middleware";
  * Postgres RLS and by the server-side capability checks in lib/auth.
  */
 
-const PROTECTED_PREFIXES = ["/dashboard", "/agent", "/investor", "/admin"] as const;
-const AUTH_PAGES = ["/login", "/register"] as const;
+// `/account` holds the pages every role shares — changing a password, for one
+// — so it is protected like any workspace.
+const PROTECTED_PREFIXES = ["/dashboard", "/agent", "/investor", "/admin", "/account"] as const;
+const AUTH_PAGES = ["/login", "/register", "/forgot-password"] as const;
 
 export async function middleware(request: NextRequest) {
   try {
