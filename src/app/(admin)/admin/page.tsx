@@ -185,10 +185,11 @@ export default async function AdminOverviewPage() {
           <>
             {" "}
             This database still holds rows planted by <code className="font-mono">seed.sql</code>;
-            every card that includes some says how many. To clear them, run{" "}
-            <code className="font-mono">supabase/remove-demo-data.sql</code> — it deletes only rows
-            flagged <code className="font-mono">is_demo</code>, keeps your administrator account,
-            and leaves real data untouched.
+            every card that includes some says how many.{" "}
+            <code className="font-mono">supabase/inspect-demo-data.sql</code> lists exactly which
+            accounts are demo and which are real, changing nothing;{" "}
+            <code className="font-mono">supabase/remove-demo-data.sql</code> then deletes them,
+            keeping your administrator account and all real data.
           </>
         )}
       </p>
