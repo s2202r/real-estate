@@ -183,3 +183,60 @@ exist on the notification preferences.
 | L10 Messaging | | | ☐ | |
 
 `ENABLE_INVESTOR_MODULE` must remain `false` until L1 is signed off.
+
+---
+
+## L8 — The published policy documents  ·  Severity: HIGH  ·  Blocks launch
+
+**What exists.** Seven documents at `/terms`, `/privacy`, `/cookies`,
+`/disclaimer`, `/refunds`, `/agent-terms` and `/grievance-redressal`, listed at
+`/legal`, written from what the platform actually does — review before
+publication, badges granted never self-claimed, contact reveal logged and
+capped, twelve-hour visit notice, customer-confirmed visits, a deterministic
+versioned commission engine, paid ledger entries never rewritten.
+
+**What they are.** Drafts by an engineer, describing accurately what the
+software does. They are not legal advice and have not been reviewed by anyone
+qualified in Indian law. Publishing them unchanged is a decision, not a default.
+
+**Company particulars are deliberately not written into them.** Registered
+address, LLPIN, GSTIN, grievance officer and jurisdiction come from environment
+configuration (`NEXT_PUBLIC_LEGAL_*`, `NEXT_PUBLIC_GRIEVANCE_*`). Anything unset
+renders as a visible gap — `[registered address — not yet published]` — rather
+than as an invented value, and `missingLegalParticulars()` reports the gaps
+through `/api/v1/health`. An invented address is a false statement in a document
+users are asked to rely on; a gap is merely incomplete.
+
+**Required decisions.**
+
+1. **Intermediary status.** Whether the platform is an intermediary under
+   §79 of the IT Act, and whether the safe harbour survives the editorial acts
+   it performs — reviewing listings before publication, editing them, awarding
+   badges. This determines how much of the liability position holds.
+2. **Limitation of liability.** The cap in the Terms (greater of fees paid and
+   ₹10,000) is a placeholder. Indian courts read these down, and the Consumer
+   Protection Act, 2019 constrains what may be excluded against a consumer.
+3. **Jurisdiction clause.** Exclusive jurisdiction is unenforceable against a
+   consumer in several readings; confirm what to state.
+4. **DPDP retention periods.** Seven and eight years are asserted in the Privacy
+   Policy from tax and limitation practice. Confirm each against the obligation
+   that actually drives it, and confirm the position that audit and
+   contact-access logs are not erasable on request.
+5. **Consent notice.** The DPDP Act requires an itemised notice at the point of
+   collection, in English and in the Eighth Schedule languages on request. The
+   registration checkbox links to the policy; whether that discharges the
+   obligation needs deciding.
+6. **RERA advertisement disclosure.** Which state's format applies to a listing
+   page, and whether the disclaimer discharges it.
+7. **Commission and GST.** Whether the platform's share is a brokerage service
+   attracting GST at the platform level, and the TDS position on agent payouts.
+8. **Refund timescales.** 7–10 working days and a 30-day claim window are
+   drafted; confirm against the payment aggregator's own rules and any RBI
+   requirement.
+9. **Grievance timescales.** 24-hour acknowledgement, 15-day resolution and
+   24-hour takedown of manifestly unlawful content follow the IT Rules, 2021.
+   Confirm they match what operations can actually sustain — a published
+   timescale that is missed is worse than a longer one that is met.
+
+**Until this is signed off**, the documents should be treated as a description
+of the product's behaviour rather than as an enforceable agreement.

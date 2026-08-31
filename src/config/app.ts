@@ -38,6 +38,51 @@ export const appConfig = {
 } as const;
 
 /**
+ * Particulars the legal pages have to state.
+ *
+ * These are NOT hard-coded into the prose, for two reasons. A registered
+ * address or a grievance officer's name invented by whoever wrote the page is
+ * worse than no address at all — it is a false statement in a document people
+ * are asked to rely on. And Indian law requires several of them to be
+ * published and kept current (the IT Rules require a named grievance officer
+ * with contact details; the DPDP Act requires a route for data-principal
+ * requests), so they must be changeable without a code edit.
+ *
+ * Anything unset renders as a visible gap rather than as a plausible-looking
+ * placeholder, and `missingLegalParticulars()` reports it through the health
+ * endpoint so the gap is findable before a regulator finds it.
+ */
+export const legalEntityDetails = {
+  name: appConfig.legalEntity,
+  /** LLPIN / CIN as issued by the MCA. */
+  registrationNumber: process.env.NEXT_PUBLIC_LEGAL_REGISTRATION_NUMBER || "",
+  gstin: process.env.NEXT_PUBLIC_LEGAL_GSTIN || "",
+  registeredAddress: process.env.NEXT_PUBLIC_LEGAL_ADDRESS || "",
+  /** Required by the IT (Intermediary Guidelines) Rules, 2021. */
+  grievanceOfficerName: process.env.NEXT_PUBLIC_GRIEVANCE_OFFICER || "",
+  grievanceEmail: process.env.NEXT_PUBLIC_GRIEVANCE_EMAIL || appConfig.supportEmail,
+  /** Where data-principal requests under the DPDP Act, 2023 are received. */
+  privacyEmail: process.env.NEXT_PUBLIC_PRIVACY_EMAIL || appConfig.supportEmail,
+  governingLaw: process.env.NEXT_PUBLIC_GOVERNING_LAW || "India",
+  /** Courts of which city have jurisdiction. */
+  jurisdiction: process.env.NEXT_PUBLIC_LEGAL_JURISDICTION || "",
+} as const;
+
+/**
+ * Which required particulars are still unpublished. Names only — every value
+ * here is public by design, but the list is what makes the gap actionable.
+ */
+export function missingLegalParticulars(): string[] {
+  const required: [string, string][] = [
+    ["NEXT_PUBLIC_LEGAL_REGISTRATION_NUMBER", legalEntityDetails.registrationNumber],
+    ["NEXT_PUBLIC_LEGAL_ADDRESS", legalEntityDetails.registeredAddress],
+    ["NEXT_PUBLIC_GRIEVANCE_OFFICER", legalEntityDetails.grievanceOfficerName],
+    ["NEXT_PUBLIC_LEGAL_JURISDICTION", legalEntityDetails.jurisdiction],
+  ];
+  return required.filter(([, value]) => !value).map(([name]) => name);
+}
+
+/**
  * Operational limits. These have environment overrides because they are tuned
  * per market, but they always have a safe default so the app boots without a
  * fully populated environment.

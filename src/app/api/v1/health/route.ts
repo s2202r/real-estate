@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { appConfig } from "@/config/app";
+import { appConfig, missingLegalParticulars } from "@/config/app";
 import { configWarnings, isSupabaseConfigured } from "@/config/env";
 import { features } from "@/config/features";
 
@@ -40,6 +40,8 @@ export async function GET() {
       database: isSupabaseConfigured() ? "configured" : "not_configured",
       features: Object.fromEntries(Object.entries(features).map(([key, value]) => [key, value])),
       configWarnings: configWarnings(),
+      // Particulars the legal pages are required to state and cannot invent.
+      missingLegalParticulars: missingLegalParticulars(),
       deployment: {
         /** The hostname this request actually arrived on. */
         host: requestHeaders.get("host"),

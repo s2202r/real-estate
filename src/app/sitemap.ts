@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { appConfig, supportedCities } from "@/config/app";
 import { searchListings } from "@/lib/data/listings";
 import { searchAgents } from "@/lib/data/agents";
+import { legalDocuments } from "@/content/legal";
 import { listingPath } from "@/lib/domain/references";
 
 /**
@@ -21,6 +22,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/agents`, changeFrequency: "daily", priority: 0.8 },
     { url: `${base}/about`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/contact`, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${base}/legal`, changeFrequency: "monthly", priority: 0.3 },
+    // Policies are indexed deliberately: a search for "getmespace privacy
+    // policy" should find the policy rather than a third party's summary of it.
+    ...legalDocuments.map((document) => ({
+      url: `${base}/${document.slug}`,
+      lastModified: new Date(document.updated),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    })),
   ];
 
   const cityEntries: MetadataRoute.Sitemap = supportedCities.map((city) => ({

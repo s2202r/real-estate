@@ -29,6 +29,16 @@ const FOOTER_SECTIONS = [
     links: [
       { href: "/about", label: "About" },
       { href: "/contact", label: "Contact" },
+      { href: "/grievance-redressal", label: "Grievance redressal" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { href: "/terms", label: "Terms of service" },
+      { href: "/privacy", label: "Privacy policy" },
+      { href: "/cookies", label: "Cookies" },
+      { href: "/legal", label: "All policies" },
     ],
   },
 ] as const;
@@ -43,7 +53,7 @@ export async function SiteFooter() {
       {/* Extra bottom room on small screens so a floating action button — the
           Filters FAB on search pages — never sits on top of the disclaimer. */}
       <div className="mx-auto max-w-7xl px-4 pb-28 pt-12 sm:px-6 lg:px-8 lg:pb-12">
-        <div className="grid gap-10 md:grid-cols-4">
+        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           <div className="md:col-span-1">
             <Link href="/" aria-label={`${appConfig.name} home`}>
               <Logo size={32} />
@@ -99,7 +109,11 @@ export async function SiteFooter() {
           <p className="max-w-2xl">
             Property information is submitted by verified agents and reviewed by the platform before
             publication. Verification confirms the completeness and consistency of the information
-            provided; it is not a legal opinion on title or ownership.
+            provided; it is not a legal opinion on title or ownership. See the{" "}
+            <Link href="/disclaimer" className="underline underline-offset-4">
+              full disclaimer
+            </Link>
+            .
           </p>
         </div>
       </div>

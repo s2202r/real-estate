@@ -178,8 +178,15 @@ export function RegisterForm() {
               className="mt-1 size-4 rounded border-input"
             />
             <Label htmlFor="acceptTerms" className="cursor-pointer text-xs font-normal leading-relaxed">
-              I agree to the terms of service and privacy policy, and consent to my details being
-              used to deliver the service.
+              I agree to the{" "}
+              <Link href="/terms" target="_blank" className="text-primary underline underline-offset-4">
+                terms of service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" target="_blank" className="text-primary underline underline-offset-4">
+                privacy policy
+              </Link>
+              , and consent to my details being used to deliver the service.
             </Label>
           </div>
           <FieldError errors={state?.fieldErrors?.acceptTerms} />
