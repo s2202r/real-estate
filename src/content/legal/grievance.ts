@@ -1,5 +1,5 @@
 import { appConfig, legalEntityDetails } from "@/config/app";
-import { orGap, type LegalDocument } from "@/components/legal/legal-page";
+import type { LegalDocument } from "@/components/legal/legal-page";
 
 const app = appConfig.name;
 
@@ -15,23 +15,23 @@ export const grievanceDocument: LegalDocument = {
       body: [
         {
           kind: "p",
-          text: "Published as required by the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, and by the Consumer Protection (E-Commerce) Rules, 2020.",
+          text: `Every complaint about ${app} reaches the Grievance Office, which is published as required by the Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021, and by the Consumer Protection (E-Commerce) Rules, 2020. Email is the fastest route and the one we monitor.`,
         },
         {
           kind: "definitions",
           items: [
-            {
-              term: "Name",
-              text: orGap(legalEntityDetails.grievanceOfficerName, "grievance officer"),
-            },
+            { term: "Contact", text: legalEntityDetails.grievanceOfficerName },
             { term: "Email", text: legalEntityDetails.grievanceEmail },
-            {
-              term: "Postal address",
-              text: `${legalEntityDetails.name}, ${orGap(
-                legalEntityDetails.registeredAddress,
-                "registered address",
-              )}`,
-            },
+            // A postal address appears only if the company publishes one.
+            ...(legalEntityDetails.registeredAddress
+              ? [
+                  {
+                    term: "Postal address",
+                    text: `${legalEntityDetails.name}, ${legalEntityDetails.registeredAddress}`,
+                  },
+                ]
+              : []),
+            { term: "Company", text: legalEntityDetails.name },
             { term: "Hours", text: "Monday to Friday, 10:00–18:00 IST, excluding public holidays." },
           ],
         },

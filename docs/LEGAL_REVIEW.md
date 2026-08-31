@@ -207,8 +207,25 @@ than as an invented value, and `missingLegalParticulars()` reports the gaps
 through `/api/v1/health`. An invented address is a false statement in a document
 users are asked to rely on; a gap is merely incomplete.
 
+**Two particulars are withheld by decision, not by oversight.**
+
+- **No postal address is published.** Every sentence that would have carried one
+  is written to read correctly without it. The Consumer Protection
+  (E-Commerce) Rules, 2020 require an e-commerce entity to display the address
+  of its headquarters and registered office; withholding it is a decision the
+  company has taken and an advisor should be asked to confirm.
+- **The grievance route names an office, not an individual.** Rule 3(2)(a) of
+  the IT Rules, 2021 asks for the *name* and contact details of the Grievance
+  Officer. "Grievance Office" is a true and usable answer for a complainant,
+  and it is not the answer the Rule asks for. Setting
+  `NEXT_PUBLIC_GRIEVANCE_OFFICER` publishes a name everywhere it belongs.
+
+Neither is reported as a gap by `missingLegalParticulars()`, precisely because
+they are choices; the registration number and the jurisdiction still are.
+
 **Required decisions.**
 
+0. **The two withheld particulars above** — whether the exposure is acceptable.
 1. **Intermediary status.** Whether the platform is an intermediary under
    §79 of the IT Act, and whether the safe harbour survives the editorial acts
    it performs — reviewing listings before publication, editing them, awarding

@@ -148,8 +148,3 @@ function Block({ block }: { block: LegalBlock }) {
       );
   }
 }
-
-/** A particular the company has not published yet, rendered as the gap it is. */
-export function orGap(value: string, description: string): string {
-  return value || `[${description} — not yet published]`;
-}

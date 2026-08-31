@@ -1,5 +1,5 @@
 import { appConfig, legalEntityDetails } from "@/config/app";
-import { orGap, type LegalDocument } from "@/components/legal/legal-page";
+import type { LegalDocument } from "@/components/legal/legal-page";
 
 const entity = appConfig.legalEntity;
 const app = appConfig.name;
@@ -18,7 +18,11 @@ export const termsDocument: LegalDocument = {
           kind: "p",
           text: `${app} is operated by ${entity}${
             legalEntityDetails.registrationNumber ? ` (${legalEntityDetails.registrationNumber})` : ""
-          }, registered at ${orGap(legalEntityDetails.registeredAddress, "registered address")}. In these terms, "we" and "us" mean that company, and "you" means the person or business using the platform.`,
+          }${
+            legalEntityDetails.registeredAddress
+              ? `, registered at ${legalEntityDetails.registeredAddress}`
+              : ""
+          }. In these terms, "we" and "us" mean that company, and "you" means the person or business using the platform.`,
         },
         {
           kind: "p",
@@ -225,11 +229,16 @@ export const termsDocument: LegalDocument = {
       body: [
         {
           kind: "p",
-          text: `Tell us first. The Grievance Redressal page names the officer, the address and the timescales we work to. Most disputes between users about a visit, an attribution or a commission are handled through the platform's own dispute process, which is faster than any court.`,
+          text: `Tell us first. The Grievance Redressal page gives the route to the Grievance Office and the timescales we work to. Most disputes between users about a visit, an attribution or a commission are handled through the platform's own dispute process, which is faster than any court.`,
         },
         {
           kind: "p",
-          text: `These terms are governed by the laws of ${legalEntityDetails.governingLaw}. The courts at ${orGap(legalEntityDetails.jurisdiction, "jurisdiction")} have exclusive jurisdiction, save that either of us may seek urgent injunctive relief anywhere.`,
+          // Without a named seat the clause still has to say something true,
+          // so it falls back to the governing law rather than to a blank or an
+          // invented city.
+          text: legalEntityDetails.jurisdiction
+            ? `These terms are governed by the laws of ${legalEntityDetails.governingLaw}. The courts at ${legalEntityDetails.jurisdiction} have exclusive jurisdiction, save that either of us may seek urgent injunctive relief anywhere.`
+            : `These terms are governed by the laws of ${legalEntityDetails.governingLaw}, and are subject to the jurisdiction of its courts.`,
         },
       ],
     },

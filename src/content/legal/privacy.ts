@@ -1,5 +1,5 @@
 import { appConfig, legalEntityDetails } from "@/config/app";
-import { orGap, type LegalDocument } from "@/components/legal/legal-page";
+import type { LegalDocument } from "@/components/legal/legal-page";
 
 const entity = appConfig.legalEntity;
 const app = appConfig.name;
@@ -18,7 +18,9 @@ export const privacyDocument: LegalDocument = {
           kind: "p",
           text: `${entity}${
             legalEntityDetails.registrationNumber ? ` (${legalEntityDetails.registrationNumber})` : ""
-          }, at ${orGap(legalEntityDetails.registeredAddress, "registered address")}, decides how and why your personal data is processed on ${app}. Under the Digital Personal Data Protection Act, 2023 we are the Data Fiduciary and you are the Data Principal.`,
+          }${
+            legalEntityDetails.registeredAddress ? `, at ${legalEntityDetails.registeredAddress},` : ""
+          } decides how and why your personal data is processed on ${app}. Under the Digital Personal Data Protection Act, 2023 we are the Data Fiduciary and you are the Data Principal.`,
         },
         {
           kind: "p",

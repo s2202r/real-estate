@@ -57,9 +57,22 @@ export const legalEntityDetails = {
   /** LLPIN / CIN as issued by the MCA. */
   registrationNumber: process.env.NEXT_PUBLIC_LEGAL_REGISTRATION_NUMBER || "",
   gstin: process.env.NEXT_PUBLIC_LEGAL_GSTIN || "",
+  /**
+   * Optional by decision, not by oversight. The company does not publish a
+   * postal address, so every sentence that would have carried one is written
+   * to read correctly without it — rather than showing a gap where an address
+   * is expected. Set the variable and the address appears everywhere it
+   * belongs.
+   */
   registeredAddress: process.env.NEXT_PUBLIC_LEGAL_ADDRESS || "",
-  /** Required by the IT (Intermediary Guidelines) Rules, 2021. */
-  grievanceOfficerName: process.env.NEXT_PUBLIC_GRIEVANCE_OFFICER || "",
+  /**
+   * Who receives grievances, per the IT (Intermediary Guidelines) Rules, 2021.
+   *
+   * Defaults to the office rather than to a gap: a complainant needs somewhere
+   * to write, and "the Grievance Office" is a true and usable answer. Set the
+   * variable to name an individual — which is what the Rules ask for.
+   */
+  grievanceOfficerName: process.env.NEXT_PUBLIC_GRIEVANCE_OFFICER || "Grievance Office",
   grievanceEmail: process.env.NEXT_PUBLIC_GRIEVANCE_EMAIL || appConfig.supportEmail,
   /** Where data-principal requests under the DPDP Act, 2023 are received. */
   privacyEmail: process.env.NEXT_PUBLIC_PRIVACY_EMAIL || appConfig.supportEmail,
@@ -73,10 +86,12 @@ export const legalEntityDetails = {
  * here is public by design, but the list is what makes the gap actionable.
  */
 export function missingLegalParticulars(): string[] {
+  // The postal address and a named officer are omitted here on purpose: the
+  // company has decided not to publish an address, and the grievance route
+  // falls back to the office. Both remain settable; neither is reported as a
+  // gap. See LEGAL_REVIEW.md L8 for what that trades away.
   const required: [string, string][] = [
     ["NEXT_PUBLIC_LEGAL_REGISTRATION_NUMBER", legalEntityDetails.registrationNumber],
-    ["NEXT_PUBLIC_LEGAL_ADDRESS", legalEntityDetails.registeredAddress],
-    ["NEXT_PUBLIC_GRIEVANCE_OFFICER", legalEntityDetails.grievanceOfficerName],
     ["NEXT_PUBLIC_LEGAL_JURISDICTION", legalEntityDetails.jurisdiction],
   ];
   return required.filter(([, value]) => !value).map(([name]) => name);
