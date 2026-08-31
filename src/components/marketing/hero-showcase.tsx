@@ -15,6 +15,13 @@ import { cn } from "@/lib/utils";
  * something to put in front of a customer looking for a home — the network
  * guide that explains it is gated to those roles for the same reason.
  *
+ * It shows on every screen size. It used to be desktop-only, which meant the
+ * majority of visitors — who arrive on a phone — got the claim without the
+ * illustration of it, and the hero ended at a row of city chips. The stacked
+ * layout is the natural one on a narrow screen; the overlap that makes the two
+ * cards read as one composition is a wide-screen flourish and is applied only
+ * there, because at 360px it just eats width.
+ *
  * The panel is decoration in the layout sense, so it is hidden from assistive
  * technology: everything it says is stated in the copy beside it. Figures are
  * labelled as examples — they must never be mistakable for a real property.
@@ -66,8 +73,9 @@ export function HeroShowcase({ className }: { className?: string }) {
         </CardContent>
       </Card>
 
-      {/* Visit card, offset so the two read as one composition. */}
-      <Card className="ml-6 mt-4 shadow-e3 sm:ml-10">
+      {/* Offset so the two read as one composition — but only where there is
+          width to spare for it. */}
+      <Card className="mt-4 shadow-e3 sm:ml-10 lg:ml-6 xl:ml-10">
         <CardContent className="p-5">
           <div className="flex items-center justify-between gap-3">
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

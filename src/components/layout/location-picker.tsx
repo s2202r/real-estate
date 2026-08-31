@@ -211,7 +211,11 @@ export function LocationPicker({
         <Button
           variant="ghost"
           size="sm"
-          className="max-w-[9rem] gap-1.5 px-2 sm:max-w-[14rem]"
+          // `min-w-0` is what actually lets this shrink. A flex item defaults
+          // to min-width:auto, so without it the button refuses to go below the
+          // width of its own label and pushes the header off the screen on a
+          // narrow phone. With it, the label truncates and the header holds.
+          className="min-w-0 max-w-[9rem] gap-1.5 px-2 sm:max-w-[14rem]"
           aria-label={`Location: ${label}. Change`}
         >
           <MapPin className={cn("size-4 shrink-0", isScoped && "text-primary")} aria-hidden />

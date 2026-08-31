@@ -73,7 +73,7 @@ export default async function HomePage() {
       <section className="surface-gradient relative isolate overflow-hidden border-b">
         <div className="surface-grid absolute inset-0 -z-10" aria-hidden />
 
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:px-8 lg:pb-24 lg:pt-14 xl:grid-cols-[minmax(0,1fr)_27rem]">
+        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 pb-16 pt-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-12 lg:px-8 lg:pb-24 lg:pt-14 xl:grid-cols-[minmax(0,1fr)_27rem]">
           <div className="max-w-3xl">
             <Badge variant="success" size="lg">
               <BadgeCheck aria-hidden />
@@ -129,7 +129,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <HeroShowcase className="hidden lg:block" />
+          <HeroShowcase />
         </div>
       </section>
 

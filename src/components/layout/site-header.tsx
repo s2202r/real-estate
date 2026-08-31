@@ -36,7 +36,11 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+      {/* `gap-2` on small screens, not `gap-4`: at 360px — the width of most
+          budget Android phones — the extra spacing was enough to push the
+          right-hand cluster past the viewport, and a header that overflows
+          makes the WHOLE PAGE scroll sideways. */}
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-1.5 px-3 sm:gap-4 sm:px-6 lg:px-8">
         <Link href="/" className="shrink-0" aria-label={`${appConfig.name} home`}>
           {/* One mark, not a responsive pair: the wordmark hides below `sm` so
               the header never wraps, and the mark alone still identifies us. */}
@@ -59,7 +63,9 @@ export async function SiteHeader() {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        {/* Never compressed: these are the actions. Everything to the left of
+            them gives way first. */}
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <Button asChild variant="ghost" size="icon" className="md:hidden">
             <Link href="/properties" aria-label="Search properties">
               <Search />
