@@ -1,4 +1,4 @@
-# Email codes: what Supabase has to be told
+# Email codes: how they are sent
 
 The app asks people for **6-digit codes**, not links:
 
@@ -9,60 +9,71 @@ The app asks people for **6-digit codes**, not links:
 | `/forgot-password` | Prove the inbox, then set a new password |
 | `/account/password` | Change a password with the current one (no email involved) |
 
-Supabase mints a token for every one of these. **Whether the token reaches the
-person depends entirely on the email template**, and the stock templates print
-only a link. Until the templates below carry `{{ .Token }}`, the code boxes in
-the app will be waiting for a code that was never sent.
+**The app mints the codes and sends them itself, through Resend.** Supabase Auth
+still owns accounts, passwords, sessions and the JWT that every row-level
+security policy reads through `auth.uid()` — only email DELIVERY moved.
 
-## 1 · Put the code in the templates
+## Why delivery moved
 
-Supabase dashboard → **Authentication → Email Templates**. Three of them need
-`{{ .Token }}`:
+Supabase's built-in SMTP is shared and rate-limited to a handful of messages an
+hour. Fine while building; useless the moment real people sign up, when codes
+simply stop arriving with nothing in the product to show why. The templates also
+lived in a dashboard, which put the wording that greets a new customer outside
+the repository and outside review.
 
-- **Confirm signup** — used by registration
-- **Magic Link** — used by code sign-in
-- **Reset Password** — used by the forgotten-password flow
+`auth.admin.generateLink` is the hinge: it mints a real, verifiable one-time code
+and returns it **without sending anything**. The app puts that code in its own
+email (`src/lib/services/auth-email-template.ts`) and sends it through the
+configured provider. Verification is unchanged — `auth.verifyOtp` — so sessions
+and RLS carry on exactly as before.
 
-Keep `{{ .ConfirmationURL }}` as well. The link still works: it lands on
-`/auth/callback`, which establishes the session and — for a recovery link —
-sends the visitor to `/account/password`. Someone who clicks instead of copying
-must not hit a dead end.
+## 1 · Configure Resend
 
-A minimal body that serves both:
-
-```html
-<h2>Your {{ .SiteURL }} code</h2>
-<p style="font-size:28px;letter-spacing:6px;font-weight:600">{{ .Token }}</p>
-<p>It expires in an hour. If you did not ask for it, ignore this email.</p>
-<p>Or <a href="{{ .ConfirmationURL }}">open this link</a> instead.</p>
+```bash
+EMAIL_PROVIDER="resend"
+EMAIL_PROVIDER_API_KEY="re_..."          # Resend → API Keys
+EMAIL_FROM="GetMeSpace <no-reply@getmespace.in>"
+SUPABASE_SERVICE_ROLE_KEY="..."          # required to mint codes
 ```
 
-## 2 · Settings that have to match
+Verify the sending domain in Resend first (DKIM, SPF and the return-path record
+it gives you). An unverified domain either bounces or lands in spam, and a code
+in a spam folder is indistinguishable from a code that was never sent.
 
-Authentication → **Providers → Email**, and **URL Configuration**:
+`EMAIL_FROM` must use a domain you verified. `onboarding@resend.dev` works only
+for sending to your own address and will fail for everybody else.
 
-- **Confirm email: ON.** With it off, `signUp` returns a session immediately,
-  the app skips the verification step (correctly — there is nothing to verify),
-  and unverified addresses reach the network. Verification is the product.
-- **Site URL** = `https://getmespace.in` — where the links point.
+## 2 · Settings that still have to match
+
+Authentication → **URL Configuration**:
+
+- **Site URL** = `https://getmespace.in`
 - **Redirect URLs** must include `https://getmespace.in/auth/callback`,
   `https://www.getmespace.in/auth/callback`, and
-  `http://localhost:3000/auth/callback` for development. A URL that is not on
-  this list is rejected and the visitor lands on an error page.
-- **OTP expiry**: one hour is the default and is what the app tells people.
-  Change one and change the other.
+  `http://localhost:3000/auth/callback` for development.
+- **OTP expiry**: one hour is the default and is what the emails say. Change one
+  and change the other.
 
-## 3 · Use a real sender before launch
+You no longer need to edit the Supabase email templates, and the "Confirm email"
+toggle no longer decides whether an address gets verified — registration creates
+the account unconfirmed and requires the code regardless. On a platform whose
+premise is verification, that is not a setting worth inheriting from a checkbox.
 
-Supabase's built-in SMTP is rate-limited to a handful of messages an hour and is
-shared. It is fine while you are building and useless the moment real people
-sign up — codes simply stop arriving, with nothing in the app to show why.
-Configure custom SMTP (Authentication → Emails → SMTP Settings) against
-whatever sends your transactional mail.
+## Fallback
+
+If `SUPABASE_SERVICE_ROLE_KEY` or the Resend credentials are missing,
+`canSendAuthCode()` is false and every flow falls back to letting Supabase send
+its own email. A half-configured deployment degrades to the old behaviour rather
+than to silence. In that mode the Supabase templates do matter, and they need
+`{{ .Token }}` in **Confirm signup**, **Magic Link** and **Reset Password** for a
+code to arrive at all.
+
+Either way the links in Supabase's templates keep working through
+`/auth/callback`, and a recovery link lands on `/account/password`.
 
 ## What the app does about abuse
 
-Rate limits are enforced in the server actions, not left to Supabase:
+Rate limits are enforced in the server actions, not left to the provider:
 
 | Action | Per address | Per IP |
 | --- | --- | --- |
@@ -70,14 +81,26 @@ Rate limits are enforced in the server actions, not left to Supabase:
 | Spend a code | 10 / 15 min | 30 / 15 min |
 | Change password while signed in | 5 / 15 min per account | |
 
-Two properties these depend on, both deliberate:
+Three properties these depend on, all deliberate:
 
 - **Every send answers identically** — "If that email address has an account, a
   6-digit code is on its way" — whether or not the address is registered.
   Anything else turns the box into a membership oracle.
-- **Code sign-in never creates an account** (`shouldCreateUser: false`). With it
-  on, typing any address into the sign-in box would produce an account with no
-  name, no phone, no role and no acceptance of the terms.
+- **Code sign-in never creates an account.** Supabase's magiclink generation
+  creates a user for an unknown address, so the app checks `profiles` first and
+  simply sends nothing when there is no account. Without that check the sign-in
+  box would be a sign-up box: accounts with no name, no phone, no role and no
+  acceptance of the terms.
+- **The lookup result never reaches the person asking.** It decides whether an
+  email is sent; the response is the same either way.
 
 Note that the in-memory rate limiter is per serverless instance. See
 `src/lib/security/rate-limit.ts` — point it at Redis for a hard guarantee.
+
+## Checking it works
+
+`/api/v1/health` reports whether the database and providers are configured. To
+confirm end to end, register with an address you control: the account is created
+unconfirmed, the code arrives from your Resend domain, and Resend's dashboard
+shows the delivery. If the code never arrives, check Resend's log before
+suspecting the app — a domain that is not verified fails there, not here.

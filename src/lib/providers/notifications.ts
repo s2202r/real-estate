@@ -24,6 +24,13 @@ export interface NotificationMessage {
   readonly to: { userId: string; email?: string | null; phone?: string | null };
   readonly subject?: string;
   readonly body: string;
+  /**
+   * Optional HTML alternative, for the few messages worth designing — a
+   * six-digit code is unreadable as a run of plain text and has to be set apart
+   * from the sentence around it. `body` is still sent as the text part, so a
+   * client that refuses HTML gets something usable rather than nothing.
+   */
+  readonly html?: string;
   readonly templateKey?: string;
   readonly variables?: Record<string, string | number>;
   readonly actionUrl?: string;
@@ -104,6 +111,7 @@ class ResendEmailProvider implements NotificationProvider {
           to: [message.to.email],
           subject: message.subject ?? "Notification",
           text: message.body,
+          ...(message.html ? { html: message.html } : {}),
         }),
       });
 

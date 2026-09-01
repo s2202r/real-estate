@@ -190,17 +190,27 @@ function CodeSignIn({
   return <CodeEntry email={sentTo} next={next} purpose="signin" message={request?.message} />;
 }
 
-/** Shared by the code sign-in and the register flow: spend a code. */
+/**
+ * Shared by the code sign-in and the register flow: spend a code.
+ *
+ * `purpose` is mechanical — it decides which Supabase flow the code is
+ * verified against, and a mismatch rejects a perfectly valid code. `action` is
+ * only what the button says. They are separate because a code sent to finish a
+ * registration is, underneath, a sign-in code: the screen should say "Verify my
+ * email" while the verification says "signin".
+ */
 export function CodeEntry({
   email,
   next,
   purpose,
+  action = purpose === "signup" ? "verify" : "signin",
   message,
   onBack,
 }: {
   email: string;
   next?: string;
   purpose: "signin" | "signup";
+  action?: "verify" | "signin";
   message?: string;
   onBack?: () => void;
 }) {
@@ -230,7 +240,7 @@ export function CodeEntry({
 
       <Button type="submit" className="w-full" disabled={pending || code.length < 6}>
         {pending && <Loader2 className="animate-spin" aria-hidden />}
-        {purpose === "signup" ? "Verify my email" : "Sign in"}
+        {action === "verify" ? "Verify my email" : "Sign in"}
       </Button>
 
       {onBack && (

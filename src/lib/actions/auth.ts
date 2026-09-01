@@ -11,6 +11,8 @@ import {
   VerifyCodeSchema,
 } from "@/lib/validation/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, isAdminClientAvailable } from "@/lib/supabase/admin";
+import { canSendAuthCode, sendAuthCode } from "@/lib/services/auth-email";
 import { getSessionUser } from "@/lib/auth/session";
 import { defaultLandingPath } from "@/lib/auth/permissions";
 import { isSupabaseConfigured } from "@/config/env";
@@ -37,6 +39,31 @@ import { serviceUnavailable } from "./guards";
  *     as well as per IP. A six-digit code is a million guesses; unthrottled
  *     verification would make that a few minutes' work.
  */
+
+/**
+ * Look up an account by email, with the service-role client.
+ *
+ * Two things depend on it. Supabase's magiclink generation CREATES a user for
+ * an unknown address, so sending a sign-in code without checking first would
+ * turn the sign-in box into a sign-up box — accounts with no name, no phone,
+ * no role and no acceptance of the terms. And knowing the name lets the email
+ * greet somebody rather than open with "Hi,".
+ *
+ * THE ANSWER NEVER REACHES THE PERSON ASKING. It decides whether an email is
+ * sent; the response they see is identical either way.
+ */
+async function findAccount(email: string): Promise<{ id: string; name: string | null } | null> {
+  if (!isAdminClientAvailable()) return null;
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("id, full_name")
+    .ilike("email", email)
+    .maybeSingle();
+
+  return data ? { id: data.id, name: data.full_name } : null;
+}
 
 export async function signIn(
   _prev: ActionResult | null,
@@ -94,8 +121,15 @@ export async function signIn(
 
 export interface SignUpOutcome {
   readonly email: string;
-  /** True when Supabase is configured to confirm addresses before sign-in. */
+  /** True when the address still has to be proved before the account is usable. */
   readonly needsVerification: boolean;
+  /**
+   * Which Supabase flow minted the code, and therefore how it is spent.
+   * A code we minted ourselves is a magiclink token ("signin"); one Supabase
+   * sent on our behalf is a signup token. Getting this wrong rejects a code
+   * that is perfectly valid.
+   */
+  readonly verifyPurpose: "signin" | "signup";
 }
 
 export async function signUp(
@@ -132,20 +166,63 @@ export async function signUp(
     return { ok: false, message: "Too many sign-up attempts from this network. Try again later." };
   }
 
+  // Consumed by handle_new_user(), which restricts the role to the three
+  // self-serve values. There is no path from here to an admin account.
+  const metadata = {
+    full_name: parsed.data.fullName,
+    phone: parsed.data.phone,
+    role: parsed.data.role,
+  };
+
+  /*
+   * Preferred path: create the account ourselves, unconfirmed, and send the
+   * code through our own provider.
+   *
+   * Verification then does not depend on a project setting. `supabase.auth
+   * .signUp` hands back a live session whenever "Confirm email" happens to be
+   * off in the dashboard, and the address is never proved at all — on a
+   * platform whose entire premise is verification, that is the wrong default to
+   * inherit from a checkbox. Here the account exists but cannot be used until
+   * the code is spent.
+   */
+  if (canSendAuthCode()) {
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.createUser({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      email_confirm: false,
+      user_metadata: metadata,
+    });
+
+    if (error) {
+      return {
+        ok: false,
+        message: error.message.toLowerCase().includes("already")
+          ? "An account already exists for this email. Try signing in instead."
+          : "Could not create your account. Please try again.",
+      };
+    }
+
+    await sendAuthCode({
+      email: parsed.data.email,
+      purpose: "signin",
+      name: parsed.data.fullName,
+    });
+
+    revalidatePath("/", "layout");
+    return {
+      ok: true,
+      message: "Account created. Enter the 6-digit code we just emailed you.",
+      data: { email: parsed.data.email, needsVerification: true, verifyPurpose: "signin" },
+    };
+  }
+
+  // Fallback: let Supabase create the account and send its own email.
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
-    options: {
-      emailRedirectTo: `${appConfig.url}/auth/callback`,
-      // Consumed by handle_new_user(), which restricts the role to the three
-      // self-serve values. There is no path from here to an admin account.
-      data: {
-        full_name: parsed.data.fullName,
-        phone: parsed.data.phone,
-        role: parsed.data.role,
-      },
-    },
+    options: { emailRedirectTo: `${appConfig.url}/auth/callback`, data: metadata },
   });
 
   if (error) {
@@ -168,7 +245,7 @@ export async function signUp(
     message: needsVerification
       ? "Account created. Enter the 6-digit code we just emailed you."
       : "Account created.",
-    data: { email: parsed.data.email, needsVerification },
+    data: { email: parsed.data.email, needsVerification, verifyPurpose: "signup" },
   };
 }
 
@@ -237,6 +314,16 @@ export async function requestLoginCode(
     return { ok: false, message: "Too many codes requested. Please wait, then try again." };
   }
 
+  if (canSendAuthCode()) {
+    // Checked first, because magiclink generation would otherwise CREATE the
+    // account. Nothing about the answer reaches the person asking.
+    const account = await findAccount(email);
+    if (account) {
+      await sendAuthCode({ email, purpose: "signin", name: account.name });
+    }
+    return { ok: true, message: CODE_SENT, data: { email } };
+  }
+
   const supabase = await createClient();
   // The error is deliberately not surfaced: an unregistered address must look
   // exactly like a registered one from out here.
@@ -248,11 +335,17 @@ export async function requestLoginCode(
   return { ok: true, message: CODE_SENT, data: { email } };
 }
 
+export interface ResendOutcome {
+  readonly email: string;
+  /** How the replacement code must be spent. See SignUpOutcome. */
+  readonly verifyPurpose: "signin" | "signup";
+}
+
 /** Send the sign-up confirmation code again. */
 export async function resendSignUpCode(
-  _prev: ActionResult<{ email: string }> | null,
+  _prev: ActionResult<ResendOutcome> | null,
   formData: FormData,
-): Promise<ActionResult<{ email: string }>> {
+): Promise<ActionResult<ResendOutcome>> {
   const unavailable = serviceUnavailable();
   if (unavailable) return unavailable;
 
@@ -264,6 +357,17 @@ export async function resendSignUpCode(
     return { ok: false, message: "Too many codes requested. Please wait, then try again." };
   }
 
+  if (canSendAuthCode()) {
+    const account = await findAccount(email);
+    if (account) {
+      await sendAuthCode({ email, purpose: "signin", name: account.name });
+    }
+    // The replacement is a magiclink code, which is spent as a sign-in even
+    // though the person is finishing a registration — so say so, or the form
+    // would verify it against the wrong flow and reject a valid code.
+    return { ok: true, message: CODE_SENT, data: { email, verifyPurpose: "signin" } };
+  }
+
   const supabase = await createClient();
   await supabase.auth.resend({
     type: "signup",
@@ -271,7 +375,7 @@ export async function resendSignUpCode(
     options: { emailRedirectTo: `${appConfig.url}/auth/callback` },
   });
 
-  return { ok: true, message: CODE_SENT, data: { email } };
+  return { ok: true, message: CODE_SENT, data: { email, verifyPurpose: "signup" } };
 }
 
 /**
@@ -355,6 +459,16 @@ export async function requestPasswordReset(
   const email = parsed.data;
   if (!(await throttleCodeSend("password-reset", email))) {
     return { ok: false, message: "Too many codes requested. Please wait, then try again." };
+  }
+
+  if (canSendAuthCode()) {
+    // Recovery generation does not create users, but checking still saves an
+    // API call and lets the email use their name.
+    const account = await findAccount(email);
+    if (account) {
+      await sendAuthCode({ email, purpose: "recovery", name: account.name });
+    }
+    return { ok: true, message: CODE_SENT, data: { email } };
   }
 
   const supabase = await createClient();

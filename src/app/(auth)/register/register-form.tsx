@@ -8,7 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { resendSignUpCode, signUp, type SignUpOutcome } from "@/lib/actions/auth";
+import {
+  resendSignUpCode,
+  signUp,
+  type ResendOutcome,
+  type SignUpOutcome,
+} from "@/lib/actions/auth";
 import { CodeEntry } from "../login/login-form";
 import { features } from "@/config/features";
 import { cn } from "@/lib/utils";
@@ -67,7 +72,11 @@ export function RegisterForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <VerifyEmailStep email={state.data.email} message={state.message} />
+          <VerifyEmailStep
+            email={state.data.email}
+            purpose={state.data.verifyPurpose}
+            message={state.message}
+          />
         </CardContent>
       </Card>
     );
@@ -226,15 +235,33 @@ function FieldError({ errors }: { errors?: string[] }) {
  * address — that "resend" is not a nicety. Resending is throttled server-side
  * per address, so the button cannot be turned into a way to bomb an inbox.
  */
-function VerifyEmailStep({ email, message }: { email: string; message: string }) {
+function VerifyEmailStep({
+  email,
+  purpose,
+  message,
+}: {
+  email: string;
+  purpose: "signin" | "signup";
+  message: string;
+}) {
   const [resent, resendAction, resending] = useActionState<
-    ActionResult<{ email: string }> | null,
+    ActionResult<ResendOutcome> | null,
     FormData
   >(resendSignUpCode, null);
 
+  // A resent code may be minted by a different flow from the first one, so the
+  // form follows whatever actually sent the code the person is holding.
+  const currentPurpose = resent?.ok ? (resent.data?.verifyPurpose ?? purpose) : purpose;
+
   return (
     <div className="space-y-4">
-      <CodeEntry email={email} purpose="signup" message={message} />
+      <CodeEntry
+        key={currentPurpose}
+        email={email}
+        purpose={currentPurpose}
+        action="verify"
+        message={resent?.ok ? resent.message : message}
+      />
 
       <form action={resendAction} className="border-t pt-4 text-center">
         <input type="hidden" name="email" value={email} />
