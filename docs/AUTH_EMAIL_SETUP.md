@@ -99,8 +99,36 @@ Note that the in-memory rate limiter is per serverless instance. See
 
 ## Checking it works
 
-`/api/v1/health` reports whether the database and providers are configured. To
-confirm end to end, register with an address you control: the account is created
-unconfirmed, the code arrives from your Resend domain, and Resend's dashboard
-shows the delivery. If the code never arrives, check Resend's log before
-suspecting the app — a domain that is not verified fails there, not here.
+Ask the deployment what it thinks it is doing:
+
+```bash
+curl -s https://getmespace.in/api/v1/health | python3 -m json.tool
+```
+
+The `email` block answers it outright:
+
+```json
+"email": {
+  "provider": "resend",
+  "configured": true,
+  "deliversExternally": true,
+  "authCodes": "sent_by_app"
+}
+```
+
+| What you see | What it means |
+| --- | --- |
+| `provider: "console"` | `EMAIL_PROVIDER` is not `resend`. Unset, misspelled (`Resend` is not `resend`), or set on the wrong Vercel environment. Check `configWarnings` in the same response — validation names the variable when it rejected the value. |
+| `configured: false` | `EMAIL_PROVIDER_API_KEY` or `EMAIL_FROM` is empty. |
+| `authCodes: "supabase_fallback"` | Codes are being sent by Supabase, not by us — usually a missing `SUPABASE_SERVICE_ROLE_KEY`, since codes are minted with the admin API. |
+
+**Environment variables only take effect on a new deployment**, and Vercel scopes
+them per environment. A variable added to Preview does nothing in Production
+until it is set there and the project is redeployed.
+
+Then confirm end to end: register with an address you control. The account is
+created unconfirmed, the code arrives from your Resend domain, and Resend's
+dashboard shows the delivery. If it never arrives, look at Resend's log and at
+the deployment's function log before suspecting the app — a refusal from Resend
+(an unverified domain, a `from` that does not belong to it) is logged with the
+provider's own explanation attached.

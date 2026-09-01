@@ -51,6 +51,17 @@ export interface NotificationProvider {
   readonly name: string;
   /** False when the provider is not configured; the dispatcher then skips it. */
   isConfigured(): boolean;
+  /**
+   * Whether this provider reaches a real inbox or handset.
+   *
+   * The console provider is CONFIGURED — it always works — but it delivers
+   * nothing: it writes a line to the server log. That distinction matters for
+   * anything whose whole purpose is that a message arrives. A sign-in code
+   * "sent" to a log file is not sent, and treating the two the same is how a
+   * deployment ends up reporting "a 6-digit code is on its way" while no email
+   * exists anywhere.
+   */
+  readonly deliversExternally: boolean;
   send(message: NotificationMessage): Promise<DeliveryResult>;
 }
 
@@ -61,6 +72,7 @@ export interface NotificationProvider {
 class ConsoleEmailProvider implements NotificationProvider {
   readonly channel = "EMAIL" as const;
   readonly name = "console";
+  readonly deliversExternally = false;
 
   isConfigured(): boolean {
     return true;
@@ -69,8 +81,12 @@ class ConsoleEmailProvider implements NotificationProvider {
   async send(message: NotificationMessage): Promise<DeliveryResult> {
     // Development default: log rather than send, so a local environment never
     // emails a real person by accident.
+    //
+    // The BODY is printed too, not just the subject. A sign-in code that only
+    // exists in an email nobody sent leaves local development with no way in;
+    // printing it is the entire point of this provider.
     console.warn(
-      `[email:console] to=${message.to.email ?? message.to.userId} subject=${message.subject ?? "(none)"}`,
+      `[email:console] to=${message.to.email ?? message.to.userId} subject=${message.subject ?? "(none)"}\n${message.body}`,
     );
     return { channel: "EMAIL", delivered: true, provider: this.name };
   }
@@ -79,6 +95,7 @@ class ConsoleEmailProvider implements NotificationProvider {
 class ResendEmailProvider implements NotificationProvider {
   readonly channel = "EMAIL" as const;
   readonly name = "resend";
+  readonly deliversExternally = true;
 
   constructor(
     private readonly apiKey: string,
@@ -116,11 +133,16 @@ class ResendEmailProvider implements NotificationProvider {
       });
 
       if (!response.ok) {
+        // Resend explains the refusal in the body — an unverified sending
+        // domain, a `from` that does not belong to it, a revoked key. Dropping
+        // that and keeping only the status turns a five-second fix into an
+        // afternoon.
+        const detail = await response.text().catch(() => "");
         return {
           channel: "EMAIL",
           delivered: false,
           provider: this.name,
-          error: `Provider responded ${response.status}`,
+          error: `Provider responded ${response.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
         };
       }
 
@@ -148,6 +170,8 @@ class ResendEmailProvider implements NotificationProvider {
  * ------------------------------------------------------------------------ */
 
 class UnconfiguredProvider implements NotificationProvider {
+  readonly deliversExternally = false;
+
   constructor(
     readonly channel: NotificationChannel,
     readonly name: string,

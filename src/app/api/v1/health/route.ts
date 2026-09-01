@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { appConfig, missingLegalParticulars } from "@/config/app";
 import { configWarnings, isSupabaseConfigured } from "@/config/env";
 import { features } from "@/config/features";
+import { getNotificationProvider } from "@/lib/providers/notifications";
+import { canSendAuthCode } from "@/lib/services/auth-email";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,20 @@ export async function GET() {
       configWarnings: configWarnings(),
       // Particulars the legal pages are required to state and cannot invent.
       missingLegalParticulars: missingLegalParticulars(),
+      /**
+       * Whether a sign-in code can actually reach somebody.
+       *
+       * `provider: "console"` with `authCodes: "supabase_fallback"` is the
+       * shape of a deployment that believes it is sending email and is not:
+       * EMAIL_PROVIDER is unset, misspelled, or was rejected by validation —
+       * check `configWarnings` above, which names it when that is the cause.
+       */
+      email: {
+        provider: getNotificationProvider("EMAIL")?.name ?? "none",
+        configured: getNotificationProvider("EMAIL")?.isConfigured() ?? false,
+        deliversExternally: getNotificationProvider("EMAIL")?.deliversExternally ?? false,
+        authCodes: canSendAuthCode() ? "sent_by_app" : "supabase_fallback",
+      },
       deployment: {
         /** The hostname this request actually arrived on. */
         host: requestHeaders.get("host"),

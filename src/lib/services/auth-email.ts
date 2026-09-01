@@ -45,10 +45,27 @@ export interface SendAuthCodeResult {
   readonly reason?: string;
 }
 
-/** True when we can mint a code AND deliver it ourselves. */
+/**
+ * True when we can mint a code AND actually deliver it.
+ *
+ * The second half is not the same as "an email provider is configured". The
+ * console provider is always configured and delivers nothing — it writes to
+ * the server log. Counting it here is what makes a deployment answer "a
+ * 6-digit code is on its way" when no email exists anywhere, AND suppresses
+ * the fallback that would otherwise have let Supabase send one. Two failures
+ * from one wrong environment variable, neither of them visible.
+ *
+ * So in production only a provider that reaches a real inbox qualifies. In
+ * development the console provider does qualify, because printing the code to
+ * the terminal is exactly what is wanted there.
+ */
 export function canSendAuthCode(): boolean {
   if (!isAdminClientAvailable()) return false;
-  return getNotificationProvider("EMAIL")?.isConfigured() ?? false;
+
+  const provider = getNotificationProvider("EMAIL");
+  if (!provider?.isConfigured()) return false;
+
+  return provider.deliversExternally || process.env.NODE_ENV !== "production";
 }
 
 /**
@@ -77,7 +94,9 @@ export async function sendAuthCode(input: {
 
   const code = data?.properties?.email_otp;
   if (error || !code) {
-    return { sent: false, reason: error?.message ?? "no_code_generated" };
+    const reason = error?.message ?? "no_code_generated";
+    console.error(`[auth-email] could not mint a ${input.purpose} code: ${reason}`);
+    return { sent: false, reason };
   }
 
   const provider = getNotificationProvider("EMAIL");
@@ -94,6 +113,18 @@ export async function sendAuthCode(input: {
     html: content.html,
     metadata: { kind: "auth_code", purpose: input.purpose },
   });
+
+  if (!result.delivered) {
+    // Nothing downstream shows this to the person waiting — the response is
+    // deliberately identical whether or not an address is registered — so the
+    // log is the only place the failure can surface. Silence here is how
+    // "configured Resend, no emails" becomes unexplainable.
+    console.error(
+      `[auth-email] ${provider.name} did not deliver the ${input.purpose} code: ${
+        result.error ?? result.skippedReason ?? "unknown reason"
+      }`,
+    );
+  }
 
   return { sent: result.delivered, reason: result.error ?? result.skippedReason };
 }
