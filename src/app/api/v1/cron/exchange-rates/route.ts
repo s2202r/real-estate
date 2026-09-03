@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { getServerEnv } from "@/config/env";
 import { features } from "@/config/features";
-import { refreshExchangeRates } from "@/lib/services/exchange-rates";
+import { describeRefresh, refreshExchangeRates } from "@/lib/services/exchange-rates";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -55,11 +55,16 @@ async function handle(request: NextRequest) {
 
   const outcome = await refreshExchangeRates({ trigger: "cron" });
 
+  // Non-200 so the scheduler's own log shows a failed run rather than a green
+  // tick over an empty result. A provider outage and a database that cannot be
+  // written to are both real failures; a vetting refusal is not — that is the
+  // safeguard doing its job.
+  const providerDown = Boolean(outcome.error) && outcome.updated.length === 0;
+  const cannotStore = outcome.failed.length > 0;
+
   return NextResponse.json(
-    { data: outcome },
-    // A provider outage is worth a non-200 so the scheduler's own log shows a
-    // failed run rather than a green tick over an empty result.
-    { status: outcome.error && outcome.updated.length === 0 ? 502 : 200 },
+    { data: { ...outcome, summary: describeRefresh(outcome) } },
+    { status: providerDown ? 502 : cannotStore ? 500 : 200 },
   );
 }
 

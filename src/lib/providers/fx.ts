@@ -32,13 +32,38 @@ export interface RateFetchResult {
 
 export interface RateProvider {
   readonly name: string;
+  /**
+   * Which quote currencies this feed can ever supply, or "all".
+   *
+   * Declared rather than discovered, because the two failures look identical
+   * from the outside and are not the same thing: a currency a feed DOES NOT
+   * CARRY will never arrive however often it is asked for, while one it
+   * carries but omitted today is a transient gap. Reporting both as "no rate
+   * offered" leaves somebody waiting indefinitely for a rate that is never
+   * coming.
+   */
+  readonly covers: readonly CurrencyCode[] | "all";
   isConfigured(): boolean;
   fetchRates(base: CurrencyCode, quotes: readonly CurrencyCode[]): Promise<RateFetchResult>;
+}
+
+/**
+ * Whether a provider can ever supply a given quote currency.
+ *
+ * A provider that declares nothing is assumed to cover everything. The type
+ * requires the field, so this only bites for something built outside the type
+ * system — and there, asking for a currency and reporting it as missing is a
+ * far better failure than throwing inside a scheduled job.
+ */
+export function providerCovers(provider: RateProvider, quote: CurrencyCode): boolean {
+  if (!provider.covers) return true;
+  return provider.covers === "all" || provider.covers.includes(quote);
 }
 
 /** Nothing configured: the manual editor in /admin/settings remains the way in. */
 class NoRateProvider implements RateProvider {
   readonly name = "none";
+  readonly covers = [] as const;
 
   isConfigured(): boolean {
     return false;
@@ -63,6 +88,16 @@ class NoRateProvider implements RateProvider {
  */
 class FrankfurterRateProvider implements RateProvider {
   readonly name = "frankfurter";
+
+  /**
+   * The ECB reference set, restricted to the currencies this app quotes.
+   *
+   * AED IS NOT IN IT and never will be — the ECB does not publish a dirham
+   * reference rate. For a product aimed partly at Gulf buyers that is a real
+   * gap, and it is the reason `open_er_api` exists as an alternative here
+   * rather than as a spare.
+   */
+  readonly covers = ["USD", "GBP", "EUR", "SGD"] as const;
 
   constructor(private readonly baseUrl = "https://api.frankfurter.app") {}
 
@@ -127,6 +162,8 @@ class FrankfurterRateProvider implements RateProvider {
  */
 class OpenErApiRateProvider implements RateProvider {
   readonly name = "open_er_api";
+  /** Around 160 currencies, including every one this app quotes. */
+  readonly covers = "all" as const;
 
   constructor(private readonly baseUrl = "https://open.er-api.com/v6") {}
 

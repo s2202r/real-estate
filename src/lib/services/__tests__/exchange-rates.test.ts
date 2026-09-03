@@ -30,14 +30,18 @@ vi.mock("@/lib/supabase/admin", () => ({
 vi.mock("@/lib/services/audit", () => ({ recordAudit: async () => undefined }));
 
 const { setRateProviderForTests } = await import("@/lib/providers/fx");
-const { refreshExchangeRates, QUOTE_CURRENCIES } = await import("../exchange-rates");
+const { describeRefresh, refreshExchangeRates, QUOTE_CURRENCIES } = await import(
+  "../exchange-rates"
+);
 
 function providerReturning(
   rates: { quote: string; rate: number; asOf: string }[],
   error?: string,
+  covers: readonly string[] | "all" = "all",
 ) {
   return {
     name: "stub",
+    covers,
     isConfigured: () => true,
     fetchRates: async () => ({ rates, provider: "stub", ...(error ? { error } : {}) }),
   };
@@ -148,20 +152,80 @@ describe("refreshExchangeRates", () => {
     expect(outcome.updated).toEqual([]);
   });
 
-  it("reports a write failure as a refusal rather than as success", async () => {
+  it("keeps a write failure apart from a vetting refusal", async () => {
+    // These were one list at first, so a missing table was reported as a
+    // "refused rate" — which sends somebody to inspect a feed that is working.
     upsertError = { message: "permission denied" };
     setRateProviderForTests(
       providerReturning([{ quote: "USD", rate: 0.012, asOf: TODAY }]) as never,
     );
 
     const outcome = await refreshExchangeRates({ trigger: "cron" });
+
     expect(outcome.updated).toEqual([]);
-    expect(outcome.rejected[0]?.reason).toMatch(/permission denied/);
+    expect(outcome.rejected).toEqual([]);
+    expect(outcome.failed[0]?.reason).toMatch(/permission denied/);
+  });
+
+  it("names the migration when the table is not there", async () => {
+    upsertError = {
+      message: "Could not find the table 'public.exchange_rates' in the schema cache",
+    };
+    setRateProviderForTests(
+      providerReturning([{ quote: "USD", rate: 0.012, asOf: TODAY }]) as never,
+    );
+
+    const outcome = await refreshExchangeRates({ trigger: "cron" });
+    const summary = describeRefresh(outcome);
+
+    expect(summary).toMatch(/exchange_rates table is not in the database/);
+    expect(summary).toMatch(/20250101000016_nri_and_valuation\.sql/);
+    // And it must NOT read as though the rate itself was the problem.
+    expect(summary).not.toMatch(/refused/);
+  });
+
+  it("separates a currency the feed never carries from one it missed today", async () => {
+    // Frankfurter is ECB data and has no dirham rate — asking again will never
+    // produce one, which is a different message from a transient gap.
+    setRateProviderForTests(
+      providerReturning(
+        [{ quote: "USD", rate: 0.012, asOf: TODAY }],
+        undefined,
+        ["USD", "GBP", "EUR", "SGD"],
+      ) as never,
+    );
+
+    const outcome = await refreshExchangeRates({ trigger: "cron" });
+
+    expect(outcome.unsupported).toEqual(["AED"]);
+    expect(outcome.missing).toEqual(["GBP", "EUR", "SGD"]);
+    expect(outcome.missing).not.toContain("AED");
+
+    const summary = describeRefresh(outcome);
+    expect(summary).toMatch(/does not publish AED/);
+    expect(summary).toMatch(/open_er_api/);
+  });
+
+  it("does not ask a feed for a currency it cannot supply", async () => {
+    const asked: string[][] = [];
+    setRateProviderForTests({
+      name: "stub",
+      covers: ["USD"],
+      isConfigured: () => true,
+      fetchRates: async (_base: string, quotes: readonly string[]) => {
+        asked.push([...quotes]);
+        return { rates: [], provider: "stub" };
+      },
+    } as never);
+
+    await refreshExchangeRates({ trigger: "cron" });
+    expect(asked[0]).toEqual(["USD"]);
   });
 
   it("does nothing when no provider is configured", async () => {
     setRateProviderForTests({
       name: "none",
+      covers: [],
       isConfigured: () => false,
       fetchRates: async () => ({ rates: [], provider: "none" }),
     } as never);
