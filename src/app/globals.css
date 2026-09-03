@@ -259,3 +259,36 @@
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Navigation feedback
+   --------------------------------------------------------------------------- */
+
+/* Eases towards 90% and stops. The last 10% belongs to the route actually
+   arriving — a bar that reached 100% and then waited would be a lie. */
+@keyframes route-progress {
+  0%   { width: 0%; }
+  25%  { width: 45%; }
+  60%  { width: 72%; }
+  100% { width: 90%; }
+}
+
+.route-progress-bar {
+  animation: route-progress 8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* The whole page says "wait", which is the part people notice without looking
+   at the top of the screen. */
+html.route-pending,
+html.route-pending * {
+  cursor: progress !important;
+}
+
+/* Reduced motion keeps the acknowledgement and drops the animation: the point
+   is to confirm the click, and a static bar does that. */
+@media (prefers-reduced-motion: reduce) {
+  .route-progress-bar {
+    animation: none;
+    width: 40%;
+  }
+}

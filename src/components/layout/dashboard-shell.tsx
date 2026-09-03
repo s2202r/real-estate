@@ -19,6 +19,7 @@ import { signOut } from "@/lib/actions/auth";
 import { initialsOf } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
 import { DashboardNav, type NavItem } from "./dashboard-nav";
+import { LinkPending } from "./link-pending";
 
 export type { NavItem };
 
@@ -98,10 +99,19 @@ export function DashboardShell({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/">Back to site</Link>
+                  <Link href="/" className="flex w-full items-center justify-between gap-2">
+                    Back to site
+                    <LinkPending />
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/account/password">Change password</Link>
+                  <Link
+                    href="/account/password"
+                    className="flex w-full items-center justify-between gap-2"
+                  >
+                    Change password
+                    <LinkPending />
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>

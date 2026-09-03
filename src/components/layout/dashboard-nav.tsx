@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { LinkPending } from "./link-pending";
 
 export interface NavItem {
   readonly href: string;
@@ -69,6 +70,7 @@ export function DashboardNav({ items }: { items: readonly NavItem[] }) {
                         {item.badge > 99 ? "99+" : item.badge}
                       </Badge>
                     )}
+                    <LinkPending />
                   </Link>
                 </li>
               );

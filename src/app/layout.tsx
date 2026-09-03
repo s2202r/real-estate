@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { RouteProgress } from "@/components/layout/route-progress";
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { appConfig } from "@/config/app";
@@ -85,6 +87,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
+        {/* Above everything, so a slow page still acknowledges the click. */}
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
         <ServiceWorkerRegistration />
         <InstallPrompt />
