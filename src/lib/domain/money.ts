@@ -38,7 +38,8 @@ export class MoneyError extends Error {
   }
 }
 
-function minorPerMajor(currency: CurrencyCode): number {
+/** Exported so currency conversion can cross a pair with different exponents. */
+export function minorPerMajor(currency: CurrencyCode): number {
   return 10 ** MINOR_UNIT_EXPONENT[currency];
 }
 
