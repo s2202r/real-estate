@@ -144,9 +144,29 @@ RBI Payment Aggregator authorisation (`docs/LEGAL_REVIEW.md` L4).
 **Backups.** Enable point-in-time recovery on Supabase. The commission ledger
 and audit log are the records you cannot reconstruct.
 
-**Scheduled work.** Visit-offer expiry, listing expiry and re-verification
-reminders are modelled in the schema (`expires_at`, `next_verification_at`) but
-have no scheduler attached. Add Vercel Cron or Supabase scheduled functions.
+**Scheduled work.** One job is attached, in `vercel.json`:
+
+| Path | Schedule | What it does |
+| --- | --- | --- |
+| `/api/v1/cron/exchange-rates` | `30 6 * * 1-5` (UTC) | Refreshes the indicative NRI display rates. |
+
+It needs two variables. `FX_PROVIDER` (`frankfurter` or `open_er_api` — both
+free, neither needs a key) chooses the feed; `CRON_SECRET` authorises the call.
+**An unset `CRON_SECRET` closes the endpoint rather than opening it** — it
+answers 503 — because the job writes with the service-role client, and the
+secret is the only thing between that and the open internet. Vercel sends the
+variable automatically as a Bearer token for crons declared in `vercel.json`.
+The secret is compared in constant time.
+
+Weekdays only, because the ECB publishes on business days; a weekend run would
+re-fetch Friday's rate and change nothing. A fetched rate is vetted before it
+is stored, and a refusal leaves the previous rate in place — see
+`src/lib/services/exchange-rates.ts`. Administrators can also refresh on demand
+from **Settings → Indicative exchange rates**, which runs the same code.
+
+Visit-offer expiry, listing expiry and re-verification reminders are modelled in
+the schema (`expires_at`, `next_verification_at`) but still have no scheduler
+attached. Add them to `vercel.json` the same way when they are built.
 
 ---
 

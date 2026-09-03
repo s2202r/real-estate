@@ -11,6 +11,7 @@ import { featureStatus, features, type FeatureKey } from "@/config/features";
 import { appConfig } from "@/config/app";
 import { getExchangeRates } from "@/lib/data/nri";
 import { DEFAULT_STALE_AFTER_DAYS } from "@/lib/domain/fx";
+import { getRateProvider } from "@/lib/providers/fx";
 
 export const metadata = { title: "Settings" };
 
@@ -30,6 +31,8 @@ export const metadata = { title: "Settings" };
 export default async function AdminSettingsPage() {
   await requireCapability("settings.manage");
   const [flags, settings, rates] = await Promise.all([getFlags(), getSettings(), getRates()]);
+  const provider = getRateProvider();
+  const rateProvider = provider.isConfigured() ? provider.name : null;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -119,7 +122,7 @@ export default async function AdminSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ExchangeRatesEditor rates={rates} />
+            <ExchangeRatesEditor rates={rates} autoRefresh={rateProvider} />
           </CardContent>
         </Card>
       )}

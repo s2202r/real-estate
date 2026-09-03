@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireCustomer, requireUserOrThrow } from "@/lib/auth/session";
 import { assertCan } from "@/lib/auth/permissions";
 import { recordAudit } from "@/lib/services/audit";
+import { refreshExchangeRates } from "@/lib/services/exchange-rates";
 import { isKnownTimeZone } from "@/lib/domain/timezones";
 import { appConfig } from "@/config/app";
 import type { ActionResult } from "./leads";
@@ -225,4 +226,52 @@ export async function deleteExchangeRate(
 
   revalidatePath("/", "layout");
   return { ok: true, message: `Prices will no longer be shown in ${quote}.` };
+}
+
+/**
+ * Fetch every rate now, rather than waiting for the schedule.
+ *
+ * The same code path the scheduled run uses, so what an administrator sees
+ * here is what the cron does at half past six — including the refusals. A
+ * refused pair is reported rather than swallowed: a rate that silently stops
+ * refreshing goes on looking current for as long as nobody checks.
+ */
+export async function refreshExchangeRatesNow(
+  _prev: ActionResult | null,
+  _formData: FormData,
+): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
+  let user;
+  try {
+    user = await requireUserOrThrow();
+    assertCan(user, "commission.configure");
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Not authorised." };
+  }
+
+  const outcome = await refreshExchangeRates({ actorId: user.id, trigger: "admin" });
+  revalidatePath("/", "layout");
+
+  const parts: string[] = [];
+  if (outcome.updated.length > 0) parts.push(`updated ${outcome.updated.join(", ")}`);
+  if (outcome.rejected.length > 0) {
+    parts.push(
+      `refused ${outcome.rejected.map((item) => `${item.pair} (${item.reason})`).join("; ")}`,
+    );
+  }
+  if (outcome.missing.length > 0) parts.push(`no rate offered for ${outcome.missing.join(", ")}`);
+
+  if (outcome.error && outcome.updated.length === 0) {
+    return { ok: false, message: outcome.error };
+  }
+
+  return {
+    ok: true,
+    message:
+      parts.length > 0
+        ? `From ${outcome.provider}: ${parts.join(" · ")}.`
+        : `From ${outcome.provider}: every rate was already current.`,
+  };
 }

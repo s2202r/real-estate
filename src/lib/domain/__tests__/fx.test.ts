@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_RATE_MOVE_PERCENT,
   convert,
   describeRate,
   findRate,
   isValidRate,
+  vetIncomingRate,
   type ExchangeRate,
 } from "../fx";
 import { fromMajor, MoneyError, toMajorString } from "../money";
@@ -110,5 +112,99 @@ describe("describeRate", () => {
       convert(fromMajor("100", "INR"), { ...RATE, asOf: "2026-01-01" }, NOW),
     );
     expect(label).toMatch(/days ago/);
+  });
+});
+
+describe("vetIncomingRate", () => {
+  const stored: ExchangeRate = { from: "INR", to: "USD", rate: 0.012, asOf: "2026-09-01" };
+  const bounds = { min: 0.000001, max: 1 };
+
+  it("accepts a small movement", () => {
+    const incoming = { ...stored, rate: 0.0123, asOf: "2026-09-03" };
+    expect(vetIncomingRate({ incoming, existing: stored, now: NOW }).accepted).toBe(true);
+  });
+
+  it("refuses an inverted pair, which is the failure that matters", () => {
+    // Asking for INR->USD and being handed USD->INR: 83 instead of 0.012.
+    // Accepting it would price a ₹1 Cr flat at $830,000,000.
+    const inverted = { ...stored, rate: 83.15, asOf: "2026-09-03" };
+    const result = vetIncomingRate({ incoming: inverted, existing: stored, now: NOW });
+
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/inverted pair|moves/);
+  });
+
+  it("catches an inverted pair on the FIRST fetch, with no baseline", () => {
+    // Nothing stored, so the relative check cannot help. Every currency here
+    // is worth far more than a rupee, so a rate above 1 is impossible.
+    const result = vetIncomingRate({
+      incoming: { ...stored, rate: 83.15 },
+      existing: null,
+      now: NOW,
+      absoluteBounds: bounds,
+    });
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/plausible range/);
+  });
+
+  it("accepts a plausible first rate", () => {
+    expect(
+      vetIncomingRate({ incoming: stored, existing: null, now: NOW, absoluteBounds: bounds })
+        .accepted,
+    ).toBe(true);
+  });
+
+  it("refuses a rate dated in the future beyond a day of slack", () => {
+    expect(
+      vetIncomingRate({
+        incoming: { ...stored, asOf: "2026-09-20" },
+        existing: stored,
+        now: NOW,
+      }).accepted,
+    ).toBe(false);
+  });
+
+  it("allows a day of slack, for a provider publishing in another timezone", () => {
+    expect(
+      vetIncomingRate({
+        incoming: { ...stored, asOf: "2026-09-03" },
+        existing: stored,
+        now: NOW,
+      }).accepted,
+    ).toBe(true);
+  });
+
+  it("refuses to go backwards in time", () => {
+    // A cached or replayed response must not overwrite a fresher rate with an
+    // older one, which would make the label lie about the age.
+    const result = vetIncomingRate({
+      incoming: { ...stored, asOf: "2026-08-01" },
+      existing: stored,
+      now: NOW,
+    });
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toMatch(/older than the rate already stored/);
+  });
+
+  it("refuses junk regardless of what is stored", () => {
+    for (const rate of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(
+        vetIncomingRate({ incoming: { ...stored, rate }, existing: stored, now: NOW }).accepted,
+        String(rate),
+      ).toBe(false);
+    }
+  });
+
+  it("honours a caller's own movement limit", () => {
+    const incoming = { ...stored, rate: 0.0132, asOf: "2026-09-03" }; // +10%
+    expect(vetIncomingRate({ incoming, existing: stored, now: NOW }).accepted).toBe(true);
+    expect(
+      vetIncomingRate({ incoming, existing: stored, now: NOW, maxMovePercent: 5 }).accepted,
+    ).toBe(false);
+  });
+
+  it("uses a sane default limit", () => {
+    expect(MAX_RATE_MOVE_PERCENT).toBeGreaterThan(0);
+    expect(MAX_RATE_MOVE_PERCENT).toBeLessThan(50);
   });
 });

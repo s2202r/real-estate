@@ -143,3 +143,87 @@ export function describeRate(converted: ConvertedMoney, locale = "en-IN"): strin
     ? `indicative, from a rate last set on ${on} — ${converted.ageDays} days ago`
     : `indicative, at the rate on ${on}`;
 }
+
+/* ------------------------------------------------------------------------ *
+ * Vetting a rate that arrived from somewhere else
+ * ------------------------------------------------------------------------ */
+
+/**
+ * How far a rate may move from the one already stored before it is refused.
+ *
+ * Fifteen percent against the rupee is not a day's movement in any of the
+ * currencies here; it is an upstream mistake. The commonest is an INVERTED
+ * PAIR — asking for INR→USD and being handed USD→INR — which is a move of
+ * about eight thousand percent and would price a ₹1 Cr flat at $10,000,000.
+ */
+export const MAX_RATE_MOVE_PERCENT = 15;
+
+export interface RateVetResult {
+  readonly accepted: boolean;
+  /** Why it was refused. Present only when `accepted` is false. */
+  readonly reason?: string;
+}
+
+/**
+ * Decide whether a fetched rate may replace what is stored.
+ *
+ * A STALE RATE IS BETTER THAN A WRONG ONE. A rate a week old is visibly a rate
+ * a week old — the label says so — whereas a wrong rate looks exactly like a
+ * right one and silently misprices every property on the site. So an automatic
+ * refresh has to be able to refuse, and refusing has to leave the old value in
+ * place rather than clearing it.
+ */
+export function vetIncomingRate(input: {
+  readonly incoming: ExchangeRate;
+  /** What is stored for the pair, if anything. */
+  readonly existing?: ExchangeRate | null;
+  readonly now: Date;
+  /**
+   * A plausible band for a first rate, when there is nothing to compare with.
+   * For a rupee base every currency here is worth far more than one rupee, so
+   * the rate is well under 1 — which is exactly what catches an inverted pair
+   * on the very first fetch, before any baseline exists.
+   */
+  readonly absoluteBounds?: { min: number; max: number };
+  readonly maxMovePercent?: number;
+}): RateVetResult {
+  const { incoming, existing, now } = input;
+
+  if (!isValidRate(incoming)) {
+    return { accepted: false, reason: "the rate is not a usable number" };
+  }
+
+  // A day of slack: a provider publishing in another timezone is not an error.
+  if (Date.parse(incoming.asOf) > now.getTime() + 86_400_000) {
+    return { accepted: false, reason: "the rate is dated in the future" };
+  }
+
+  if (existing && Date.parse(incoming.asOf) < Date.parse(existing.asOf)) {
+    return {
+      accepted: false,
+      reason: `it is older than the rate already stored (${existing.asOf})`,
+    };
+  }
+
+  if (existing && isValidRate(existing)) {
+    const movePercent = Math.abs((incoming.rate - existing.rate) / existing.rate) * 100;
+    const limit = input.maxMovePercent ?? MAX_RATE_MOVE_PERCENT;
+    if (movePercent > limit) {
+      return {
+        accepted: false,
+        reason: `it moves ${movePercent.toFixed(1)}% from the stored rate, past the ${limit}% limit — usually an inverted pair or an upstream error`,
+      };
+    }
+    return { accepted: true };
+  }
+
+  const bounds = input.absoluteBounds;
+  if (bounds && (incoming.rate < bounds.min || incoming.rate > bounds.max)) {
+    return {
+      accepted: false,
+      reason: `${incoming.rate} is outside the plausible range ${bounds.min}–${bounds.max} for ${incoming.from}→${incoming.to}`,
+    };
+  }
+
+  return { accepted: true };
+}

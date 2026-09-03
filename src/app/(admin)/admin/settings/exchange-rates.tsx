@@ -1,11 +1,15 @@
 "use client";
 
 import { useActionState } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteExchangeRate, saveExchangeRate } from "@/lib/actions/nri";
+import {
+  deleteExchangeRate,
+  refreshExchangeRatesNow,
+  saveExchangeRate,
+} from "@/lib/actions/nri";
 import type { ActionResult } from "@/lib/actions/leads";
 
 export interface RateRow {
@@ -31,7 +35,14 @@ const QUOTES = ["USD", "AED", "GBP", "EUR", "SGD"] as const;
  * is better than an invented one, which on screen is indistinguishable from a
  * real one.
  */
-export function ExchangeRatesEditor({ rates }: { rates: readonly RateRow[] }) {
+export function ExchangeRatesEditor({
+  rates,
+  autoRefresh,
+}: {
+  rates: readonly RateRow[];
+  /** The configured feed, or null when rates are maintained by hand. */
+  autoRefresh: string | null;
+}) {
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     saveExchangeRate,
     null,
@@ -40,11 +51,59 @@ export function ExchangeRatesEditor({ rates }: { rates: readonly RateRow[] }) {
     deleteExchangeRate,
     null,
   );
+  const [refreshState, refreshAction, refreshing] = useActionState<
+    ActionResult | null,
+    FormData
+  >(refreshExchangeRatesNow, null);
 
   const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 p-3">
+        <p className="text-sm text-muted-foreground">
+          {autoRefresh ? (
+            <>
+              Fetched automatically from{" "}
+              <span className="font-medium text-foreground">{autoRefresh}</span> each weekday
+              morning. A figure that moves implausibly far from the stored one is refused rather
+              than published.
+            </>
+          ) : (
+            <>
+              No feed configured, so rates are whatever is entered below. Set{" "}
+              <code className="font-mono text-xs">FX_PROVIDER</code> to fetch them automatically.
+            </>
+          )}
+        </p>
+
+        {autoRefresh && (
+          <form action={refreshAction}>
+            <Button type="submit" variant="outline" size="sm" disabled={refreshing}>
+              {refreshing ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <RefreshCw aria-hidden />
+              )}
+              Refresh now
+            </Button>
+          </form>
+        )}
+      </div>
+
+      {refreshState && (
+        <p
+          className={
+            refreshState.ok
+              ? "rounded-md bg-muted p-3 text-xs"
+              : "rounded-md bg-destructive/10 p-3 text-xs text-destructive"
+          }
+          role="status"
+        >
+          {refreshState.message}
+        </p>
+      )}
+
       {rates.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No rates published. Prices are shown in rupees only, which is the correct behaviour until

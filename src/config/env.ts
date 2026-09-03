@@ -39,6 +39,10 @@ const serverSchema = z.object({
   AI_PROVIDER_API_KEY: z.string().optional(),
   AI_MODEL: z.string().optional(),
   EMAIL_PROVIDER: z.enum(["console", "resend", "ses", "sendgrid"]).default("console"),
+  // Exchange rates for NRI mode. "none" leaves the manual editor as the only
+  // way in, which is the correct default: no rate is better than a wrong one.
+  FX_PROVIDER: z.enum(["none", "frankfurter", "open_er_api"]).default("none"),
+  CRON_SECRET: z.string().optional(),
   EMAIL_PROVIDER_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
   SMS_PROVIDER: z.enum(["noop", "msg91", "twilio"]).default("noop"),
