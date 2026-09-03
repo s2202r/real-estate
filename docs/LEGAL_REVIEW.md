@@ -13,6 +13,14 @@ implemented as an unconditional business rule.
 
 ---
 
+> **Status note, added when the investor module was switched on.**
+> `ENABLE_INVESTOR_MODULE` now defaults to **true**, at the operator's
+> instruction. L1 below is **not** thereby closed: the module is live and the
+> advice has not been taken. The protection that does not depend on the flag is
+> the `agreements_active_requires_legal_review` CHECK constraint — no
+> exclusive-inventory agreement can reach ACTIVE without a recorded human legal
+> review, whatever the flag says.
+
 ## L1 — Investor / "exclusive inventory" module  ·  Severity: HIGH  ·  Blocks launch
 
 **The brief's example.** Investor pays ₹25,00,000 against a property whose seller

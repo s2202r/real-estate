@@ -7,9 +7,16 @@
  *   2. The `feature_flags` table — lets an admin toggle a module at runtime.
  *
  * A flag that is OFF in the environment can never be turned ON from the
- * database. That direction matters: `ENABLE_INVESTOR_MODULE` is legally gated
- * (docs/LEGAL_REVIEW.md L1), and an admin UI must not be able to enable a
- * module that the deployment has not been cleared to run.
+ * database. That direction matters: an admin UI must not be able to enable a
+ * module the deployment has not been cleared to run.
+ *
+ * NOT EVERY FLAG HAS SOMETHING BEHIND IT. Five of the eleven were declared
+ * ahead of the work they name, and `FEATURE_STATUS` below records which. That
+ * distinction is not pedantry: the admin console was reporting three modules
+ * as "Blocked by environment", which reads as a working feature being withheld
+ * by configuration — when two of the three have no implementation to withhold.
+ * A toggle that goes green and changes nothing is worse than one that is
+ * honestly greyed out.
  */
 
 export const FEATURE_KEYS = [
@@ -38,8 +45,22 @@ function envFlag(value: string | undefined, fallback: boolean): boolean {
  * computed key) so that Next.js can statically inline the public ones.
  */
 export const features: Record<FeatureKey, boolean> = {
-  // Defaults to false. Do not change this default without a legal sign-off.
-  ENABLE_INVESTOR_MODULE: envFlag(process.env.ENABLE_INVESTOR_MODULE, false),
+  /*
+   * ON at the operator's instruction.
+   *
+   * It shipped false because of docs/LEGAL_REVIEW.md L1: a structure where
+   * capital is placed against a property and an exit spread is captured can be
+   * characterised as an unregistered collective investment scheme. That item
+   * is still open — enabling the module does not close it.
+   *
+   * What does NOT depend on this flag: no exclusive-inventory agreement can
+   * reach ACTIVE without a recorded human legal review. That is the CHECK
+   * constraint `agreements_active_requires_legal_review`, enforced by the
+   * database, and it holds whatever this flag says.
+   *
+   * Set ENABLE_INVESTOR_MODULE=false to turn the module off again.
+   */
+  ENABLE_INVESTOR_MODULE: envFlag(process.env.ENABLE_INVESTOR_MODULE, true),
   ENABLE_AI_SEARCH: envFlag(process.env.ENABLE_AI_SEARCH, true),
   ENABLE_AI_LISTING_ASSISTANT: envFlag(process.env.ENABLE_AI_LISTING_ASSISTANT, true),
   ENABLE_VIRTUAL_TOURS: envFlag(process.env.ENABLE_VIRTUAL_TOURS, true),
@@ -51,6 +72,39 @@ export const features: Record<FeatureKey, boolean> = {
   ENABLE_NRI_MODE: envFlag(process.env.ENABLE_NRI_MODE, false),
   ENABLE_MARKETING_KIT: envFlag(process.env.ENABLE_MARKETING_KIT, true),
 };
+
+/**
+ * Whether a flag actually gates anything.
+ *
+ *  - `live`      the flag is read by code, and turning it off removes a feature.
+ *  - `always-on` the feature exists but does not consult the flag. Virtual
+ *                tours are built — the gallery, the embed allowlist, the search
+ *                filter — and are simply always available.
+ *  - `unbuilt`   nothing is implemented. The flag names an intention.
+ *
+ * Kept beside the flags rather than in the admin page, so the two cannot
+ * disagree, and checked by a test that greps the source: a flag that gains its
+ * first caller should stop claiming to be unbuilt.
+ */
+export type FeatureStatus = "live" | "always-on" | "unbuilt";
+
+export const FEATURE_STATUS: Record<FeatureKey, FeatureStatus> = {
+  ENABLE_INVESTOR_MODULE: "live",
+  ENABLE_AI_SEARCH: "live",
+  ENABLE_AI_LISTING_ASSISTANT: "live",
+  ENABLE_WHATSAPP: "live",
+  ENABLE_SMS: "live",
+  ENABLE_PUSH: "live",
+  ENABLE_VIRTUAL_TOURS: "always-on",
+  ENABLE_DOCUMENT_AI: "unbuilt",
+  ENABLE_PROPERTY_VALUATION: "unbuilt",
+  ENABLE_NRI_MODE: "unbuilt",
+  ENABLE_MARKETING_KIT: "unbuilt",
+};
+
+export function featureStatus(key: string): FeatureStatus | null {
+  return (FEATURE_STATUS as Record<string, FeatureStatus>)[key] ?? null;
+}
 
 export function isFeatureEnabled(key: FeatureKey): boolean {
   return features[key];
