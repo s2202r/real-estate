@@ -7,15 +7,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { VisitConfirmation } from "@/components/shared/visit-confirmation";
+import { VisitTime } from "@/components/shared/visit-time";
 import { requireCustomerPage } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
+import { getNriContext } from "@/lib/data/nri";
 
 export const metadata = { title: "My site visits" };
 
 export default async function CustomerVisitsPage() {
   const user = await requireCustomerPage();
-  const visits = await getVisits(user.customerId);
+  const [visits, nri] = await Promise.all([getVisits(user.customerId), getNriContext()]);
+  // Only passed when the buyer is on another clock; otherwise the card renders
+  // exactly one time, as it always has.
+  const viewerTimeZone = nri.active ? nri.timeZone : undefined;
 
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = visits.filter(
@@ -47,7 +52,7 @@ export default async function CustomerVisitsPage() {
         ) : (
           <div className="space-y-4">
             {upcoming.map((visit) => (
-              <VisitCard key={visit.id} visit={visit} />
+              <VisitCard key={visit.id} visit={visit} viewerTimeZone={viewerTimeZone} />
             ))}
           </div>
         )}
@@ -59,7 +64,7 @@ export default async function CustomerVisitsPage() {
         ) : (
           <div className="space-y-4">
             {past.map((visit) => (
-              <VisitCard key={visit.id} visit={visit} showConfirmation />
+              <VisitCard key={visit.id} visit={visit} showConfirmation viewerTimeZone={viewerTimeZone} />
             ))}
           </div>
         )}
@@ -81,7 +86,15 @@ interface VisitRow {
   listings: { title: string; locality: string; city: string; slug: string; reference_code: string } | null;
 }
 
-function VisitCard({ visit, showConfirmation }: { visit: VisitRow; showConfirmation?: boolean }) {
+function VisitCard({
+  visit,
+  showConfirmation,
+  viewerTimeZone,
+}: {
+  visit: VisitRow;
+  showConfirmation?: boolean;
+  viewerTimeZone?: string;
+}) {
   const needsConfirmation =
     showConfirmation && visit.ended_at != null && visit.customer_confirmed_at == null;
 
@@ -110,13 +123,13 @@ function VisitCard({ visit, showConfirmation }: { visit: VisitRow; showConfirmat
             </p>
           )}
 
-          <p className="tabular mt-2 text-sm text-muted-foreground">
-            {new Date(visit.requested_date).toLocaleDateString("en-IN", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}{" "}
-            at {visit.requested_time.slice(0, 5)} · {visit.reference_code}
+          <p className="mt-2 text-sm text-muted-foreground">
+            <VisitTime
+              date={visit.requested_date}
+              time={visit.requested_time}
+              viewerTimeZone={viewerTimeZone}
+            />
+            <span className="tabular block text-xs">{visit.reference_code}</span>
           </p>
         </div>
 

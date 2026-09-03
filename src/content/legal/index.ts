@@ -6,6 +6,7 @@ import { agentTermsDocument } from "./agent-terms";
 import { refundsDocument } from "./refunds";
 import { grievanceDocument } from "./grievance";
 import { disclaimerDocument } from "./disclaimer";
+import { nriGuideDocument } from "./nri-guide";
 
 /**
  * The legal documents, in the order they are listed on /legal.
@@ -22,6 +23,7 @@ export const legalDocuments: readonly LegalDocument[] = [
   refundsDocument,
   agentTermsDocument,
   grievanceDocument,
+  nriGuideDocument,
 ];
 
 export function legalDocument(slug: string): LegalDocument | undefined {
@@ -36,4 +38,5 @@ export {
   refundsDocument,
   grievanceDocument,
   disclaimerDocument,
+  nriGuideDocument,
 };

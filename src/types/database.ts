@@ -1655,6 +1655,9 @@ export interface Database {
           is_demo: boolean;
           created_at: string;
           updated_at: string;
+          is_nri: boolean;
+          preferred_timezone: string;
+          display_currency: string;
         };
         Insert: {
           id?: string;
@@ -1671,6 +1674,9 @@ export interface Database {
           is_demo?: boolean;
           created_at?: string;
           updated_at?: string;
+          is_nri?: boolean;
+          preferred_timezone?: string;
+          display_currency?: string;
         };
         Update: {
           id?: string;
@@ -1687,6 +1693,9 @@ export interface Database {
           is_demo?: boolean;
           created_at?: string;
           updated_at?: string;
+          is_nri?: boolean;
+          preferred_timezone?: string;
+          display_currency?: string;
         };
         Relationships: [
           {
@@ -2227,6 +2236,50 @@ export interface Database {
           {
             foreignKeyName: "disputes_resolved_by_fkey";
             columns: ["resolved_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      exchange_rates: {
+        Row: {
+          id: string;
+          base_currency: string;
+          quote_currency: string;
+          rate: string;
+          as_of: string;
+          source: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          base_currency: string;
+          quote_currency: string;
+          rate: string;
+          as_of: string;
+          source?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          base_currency?: string;
+          quote_currency?: string;
+          rate?: string;
+          as_of?: string;
+          source?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "exchange_rates_updated_by_fkey";
+            columns: ["updated_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];

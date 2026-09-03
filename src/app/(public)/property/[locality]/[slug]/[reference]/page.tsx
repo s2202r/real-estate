@@ -23,6 +23,8 @@ import { Separator } from "@/components/ui/separator";
 import { PropertyGallery, type GalleryItem } from "@/components/shared/property-gallery";
 import { PriceDisplay, RentDisplay } from "@/components/shared/price-display";
 import { LocationScoreCard } from "@/components/shared/location-score";
+import { SecondCurrency } from "@/components/shared/second-currency";
+import { ValuationCard } from "@/components/shared/valuation-card";
 import { EnquiryPanel, StickyEnquiryBar } from "@/components/shared/enquiry-panel";
 import { VerificationBadgeList, VerifiedListingBadge } from "@/components/shared/verification-badge";
 import { PropertyGrid } from "@/components/shared/property-card";
@@ -35,6 +37,9 @@ import {
   type ListingSummary,
 } from "@/lib/data/listings";
 import { calculateLocationScore, calculatePriceIntelligence, type NearbyPlace } from "@/lib/domain/scoring";
+import { calculateIndicativeValuation } from "@/lib/domain/valuation";
+import { getNriContext } from "@/lib/data/nri";
+import { features } from "@/config/features";
 import { formatMoney, fromMajor } from "@/lib/domain/money";
 import { getSessionUser } from "@/lib/auth/session";
 import { appConfig } from "@/config/app";
@@ -105,6 +110,14 @@ export default async function PropertyDetailPage({ params }: PageProps) {
   }));
 
   const locationScore = calculateLocationScore(nearbyPlaces);
+  const nri = await getNriContext();
+  const valuation = features.ENABLE_PROPERTY_VALUATION
+    ? calculateIndicativeValuation({
+        askingPrice: listing.price,
+        areaSqft: listing.built_up_area ? Number(listing.built_up_area) : null,
+        comparablePricesPerSqft: comparables,
+      })
+    : null;
   const priceIntelligence = calculatePriceIntelligence(
     listing.price,
     listing.built_up_area ? Number(listing.built_up_area) : null,
@@ -191,6 +204,15 @@ export default async function PropertyDetailPage({ params }: PageProps) {
               )}
               {listing.is_negotiable && <Badge variant="secondary">Negotiable</Badge>}
             </div>
+
+            {/* Only ever present for a signed-in buyer who said they are
+                abroad, and only once a rate has been published. */}
+            <SecondCurrency
+              amount={listing.price}
+              currency={nri.currency}
+              rate={nri.rate}
+              className="mt-2"
+            />
           </div>
 
           {/* Key facts */}
@@ -449,6 +471,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
             propertyId={listing.property_id}
             agentName={agent?.agency_name ?? "The listing agent"}
             isAuthenticated={Boolean(user)}
+            viewerTimeZone={nri.active ? nri.timeZone : undefined}
           />
 
           {agent && (
@@ -496,6 +519,8 @@ export default async function PropertyDetailPage({ params }: PageProps) {
           )}
 
           <LocationScoreCard score={locationScore} />
+
+          {valuation && <ValuationCard valuation={valuation} locality={listing.locality} />}
 
           {/* Price intelligence, always with its disclaimer (L7) */}
           <Card>

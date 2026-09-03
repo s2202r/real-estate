@@ -1,13 +1,16 @@
-import { AlertTriangle, Settings } from "lucide-react";
+import { AlertTriangle, Coins, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { FeatureFlagToggle } from "./flag-toggle";
+import { ExchangeRatesEditor, type RateRow } from "./exchange-rates";
 import { requireCapability } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import { featureStatus, features, type FeatureKey } from "@/config/features";
 import { appConfig } from "@/config/app";
+import { getExchangeRates } from "@/lib/data/nri";
+import { DEFAULT_STALE_AFTER_DAYS } from "@/lib/domain/fx";
 
 export const metadata = { title: "Settings" };
 
@@ -26,7 +29,7 @@ export const metadata = { title: "Settings" };
  */
 export default async function AdminSettingsPage() {
   await requireCapability("settings.manage");
-  const [flags, settings] = await Promise.all([getFlags(), getSettings()]);
+  const [flags, settings, rates] = await Promise.all([getFlags(), getSettings(), getRates()]);
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -101,6 +104,25 @@ export default async function AdminSettingsPage() {
           })}
         </CardContent>
       </Card>
+
+      {features.ENABLE_NRI_MODE && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Coins className="size-4" aria-hidden />
+              Indicative exchange rates
+            </CardTitle>
+            <CardDescription>
+              Shown beside rupee prices to buyers who said they are abroad. Display only — nothing
+              on this platform is priced or settled in a foreign currency, and a pair with no rate
+              simply shows no conversion.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExchangeRatesEditor rates={rates} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-warning/40">
         <CardHeader>
@@ -232,4 +254,26 @@ async function getSettings(): Promise<SettingRow[]> {
     .select("key, label, description, value")
     .order("category", { ascending: true });
   return (data ?? []) as SettingRow[];
+}
+
+async function getRates(): Promise<RateRow[]> {
+  const now = Date.now();
+  const rates = await getExchangeRates();
+
+  return rates
+    .filter((rate) => rate.from === appConfig.currency)
+    .map((rate) => {
+      const ageDays = Math.max(
+        0,
+        Math.floor((now - Date.parse(rate.asOf)) / 86_400_000),
+      );
+      return {
+        quote: rate.to,
+        rate: rate.rate.toFixed(8),
+        asOf: rate.asOf,
+        source: rate.source ?? null,
+        ageDays,
+        stale: ageDays > DEFAULT_STALE_AFTER_DAYS,
+      };
+    });
 }

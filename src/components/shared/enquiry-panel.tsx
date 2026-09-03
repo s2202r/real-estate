@@ -12,8 +12,13 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { earliestVisitDate, earliestVisitTimeOn } from "@/lib/domain/visits";
+import {
+  earliestVisitDate,
+  earliestVisitTimeOn,
+  localDateTimeToInstant,
+} from "@/lib/domain/visits";
 import { appConfig, platformLimits } from "@/config/app";
+import { describeInBothZones } from "@/lib/domain/timezones";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +53,8 @@ export function EnquiryPanel({
   agentName,
   isAuthenticated,
   isFavourited = false,
+  /** Set only for a buyer on another clock, to show both. */
+  viewerTimeZone,
   className,
 }: {
   listingId: string;
@@ -55,10 +62,12 @@ export function EnquiryPanel({
   agentName: string;
   isAuthenticated: boolean;
   isFavourited?: boolean;
+  viewerTimeZone?: string;
   className?: string;
 }) {
   const [favourited, setFavourited] = useState(isFavourited);
   const [savePending, setSavePending] = useState(false);
+
 
   const handleSave = async () => {
     if (!isAuthenticated) return;
@@ -80,7 +89,11 @@ export function EnquiryPanel({
         </div>
 
         <div className="grid gap-2">
-          <VisitDialog listingId={listingId} isAuthenticated={isAuthenticated} />
+          <VisitDialog
+            listingId={listingId}
+            isAuthenticated={isAuthenticated}
+            viewerTimeZone={viewerTimeZone}
+          />
           <EnquiryDialog
             listingId={listingId}
             agentName={agentName}
@@ -123,9 +136,11 @@ export function EnquiryPanel({
 function VisitDialog({
   listingId,
   isAuthenticated,
+  viewerTimeZone,
 }: {
   listingId: string;
   isAuthenticated: boolean;
+  viewerTimeZone?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<
@@ -147,6 +162,23 @@ function VisitDialog({
   const preferredTime = "16:00";
   const [visitTime, setVisitTime] = useState(preferredTime);
   const effectiveTime = earliestTime && visitTime < earliestTime ? earliestTime : visitTime;
+
+  /*
+   * The slot mirrored back on the buyer's own clock.
+   *
+   * The time being chosen is a time AT THE PROPERTY. Somebody in Dubai picking
+   * 11:00 is agreeing to 09:30 their time, and discovering that after the
+   * agent has travelled is how a visit gets missed. Shown while they choose,
+   * not afterwards.
+   */
+  const slotInBothZones = viewerTimeZone
+    ? (() => {
+        const instant = localDateTimeToInstant(visitDate, effectiveTime, appConfig.timezone);
+        return instant
+          ? describeInBothZones(instant, appConfig.timezone, viewerTimeZone)
+          : null;
+      })()
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -206,6 +238,7 @@ function VisitDialog({
             <p className="text-xs text-muted-foreground">
               Visits need at least {leadHours} hours&apos; notice, so the agent can confirm the
               slot and reach the property.
+              {viewerTimeZone && " Times below are at the property, in India."}
             </p>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -239,6 +272,13 @@ function VisitDialog({
                 />
                 <FieldError errors={state?.fieldErrors?.requestedTime} />
               </div>
+
+              {slotInBothZones && (
+                <p className="rounded-md bg-muted p-3 text-xs sm:col-span-2">
+                  <span className="tabular font-medium">{slotInBothZones.viewer}</span> your time ·{" "}
+                  <span className="tabular">{slotInBothZones.property}</span> at the property
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">

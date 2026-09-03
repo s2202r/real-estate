@@ -265,3 +265,35 @@ they are choices; the registration number and the jurisdiction still are.
 
 **Until this is signed off**, the documents should be treated as a description
 of the product's behaviour rather than as an enforceable agreement.
+
+---
+
+## L9 — NRI mode and the indicative valuation  ·  Severity: MEDIUM  ·  Blocks launch
+
+Both modules were switched on at the operator's instruction. Two things in them
+need an advisor's eye.
+
+**The NRI guidance page (`/nri-guide`).** An outline of what a non-resident goes
+through: who may buy, payment through banking channels, powers of attorney,
+diligence, withholding tax, repatriation. It opens with a callout saying it is
+general information and not advice, and that the platform is not the reader's
+adviser. It still states positions of law — that agricultural land generally
+cannot be acquired, that withholding differs when the seller is a non-resident,
+that repatriation depends on evidence of how the purchase was funded. Each is
+the ordinary understanding and each has exceptions this page does not carry.
+Have a chartered accountant and an advocate read it before launch, and decide
+whether to keep it at all: a page that is close to right may be worse than no
+page, because it is relied on.
+
+**The indicative range (`ENABLE_PROPERTY_VALUATION`).** Presented as a range
+across a stated sample of verified comparables in the same locality, never as a
+figure, with the interquartile range rather than the full spread, and nothing at
+all below eight comparables. The disclaimer says it is not a valuation and does
+not account for floor, facing, condition, view, legal status or negotiation.
+Confirm that this cannot be characterised as an estate agent's valuation or a
+registered valuer's opinion, neither of which the platform is qualified to give.
+
+**The currency conversion.** Display only, at a rate an administrator publishes
+with the date it is for, labelled indicative, and flagged when stale. Nothing is
+priced or settled in a foreign currency. Confirm the wording does not amount to
+quoting a rate or dealing in foreign exchange.

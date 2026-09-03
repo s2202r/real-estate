@@ -10,13 +10,12 @@
  * database. That direction matters: an admin UI must not be able to enable a
  * module the deployment has not been cleared to run.
  *
- * NOT EVERY FLAG HAS SOMETHING BEHIND IT. Five of the eleven were declared
- * ahead of the work they name, and `FEATURE_STATUS` below records which. That
- * distinction is not pedantry: the admin console was reporting three modules
- * as "Blocked by environment", which reads as a working feature being withheld
- * by configuration — when two of the three have no implementation to withhold.
- * A toggle that goes green and changes nothing is worse than one that is
- * honestly greyed out.
+ * NOT EVERY FLAG HAS SOMETHING BEHIND IT. Some were declared ahead of the work
+ * they name, and `FEATURE_STATUS` below records which. That distinction is not
+ * pedantry: the admin console was reporting modules as "Blocked by
+ * environment", which reads as a working feature withheld by configuration,
+ * when there was no implementation to withhold. A toggle that goes green and
+ * changes nothing is worse than one honestly greyed out.
  */
 
 export const FEATURE_KEYS = [
@@ -68,8 +67,12 @@ export const features: Record<FeatureKey, boolean> = {
   ENABLE_SMS: envFlag(process.env.ENABLE_SMS, false),
   ENABLE_PUSH: envFlag(process.env.ENABLE_PUSH, false),
   ENABLE_DOCUMENT_AI: envFlag(process.env.ENABLE_DOCUMENT_AI, false),
-  ENABLE_PROPERTY_VALUATION: envFlag(process.env.ENABLE_PROPERTY_VALUATION, false),
-  ENABLE_NRI_MODE: envFlag(process.env.ENABLE_NRI_MODE, false),
+  // Both ON at the operator's instruction, and both now have code behind
+  // them. Valuation surfaces an indicative RANGE from verified comparables and
+  // never a figure; NRI mode is display-only — a second currency, visit times
+  // on the buyer's clock, and the guidance page.
+  ENABLE_PROPERTY_VALUATION: envFlag(process.env.ENABLE_PROPERTY_VALUATION, true),
+  ENABLE_NRI_MODE: envFlag(process.env.ENABLE_NRI_MODE, true),
   ENABLE_MARKETING_KIT: envFlag(process.env.ENABLE_MARKETING_KIT, true),
 };
 
@@ -96,9 +99,9 @@ export const FEATURE_STATUS: Record<FeatureKey, FeatureStatus> = {
   ENABLE_SMS: "live",
   ENABLE_PUSH: "live",
   ENABLE_VIRTUAL_TOURS: "always-on",
+  ENABLE_PROPERTY_VALUATION: "live",
+  ENABLE_NRI_MODE: "live",
   ENABLE_DOCUMENT_AI: "unbuilt",
-  ENABLE_PROPERTY_VALUATION: "unbuilt",
-  ENABLE_NRI_MODE: "unbuilt",
   ENABLE_MARKETING_KIT: "unbuilt",
 };
 

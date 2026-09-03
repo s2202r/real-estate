@@ -1,4 +1,4 @@
-import { Eye, ShieldCheck } from "lucide-react";
+import { Eye, Globe2, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -8,6 +8,9 @@ import { listContactAccessForCustomer } from "@/lib/services/contact-access";
 import { maskEmail, maskPhone } from "@/lib/security/masking";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
+import { features } from "@/config/features";
+import { appConfig } from "@/config/app";
+import { NriPreferences } from "./nri-preferences";
 
 export const metadata = { title: "Profile and privacy" };
 
@@ -21,6 +24,7 @@ export const metadata = { title: "Profile and privacy" };
 export default async function ProfilePage() {
   const user = await requireUser("/dashboard/profile");
   const profile = await getProfile(user.id);
+  const nri = features.ENABLE_NRI_MODE ? await getNriPreferences(user.id) : null;
   const accessLog = user.customerId ? await listContactAccessForCustomer(user.customerId) : [];
 
   return (
@@ -77,6 +81,29 @@ export default async function ProfilePage() {
           </p>
         </CardContent>
       </Card>
+
+      {nri && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Globe2 className="size-4" aria-hidden />
+              Buying from abroad
+            </CardTitle>
+            <CardDescription>
+              Display preferences only. Prices stay in rupees and visits stay at the property&apos;s
+              own local time — this changes what you are shown, not what anything costs or when it
+              happens.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <NriPreferences
+              isNri={nri.is_nri}
+              timeZone={nri.preferred_timezone ?? appConfig.timezone}
+              displayCurrency={nri.display_currency ?? "INR"}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -140,6 +167,17 @@ async function getProfile(userId: string) {
     .from("profiles")
     .select("phone, phone_country, email_verified_at, phone_verified_at")
     .eq("id", userId)
+    .maybeSingle();
+  return data;
+}
+
+async function getNriPreferences(userId: string) {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("customers")
+    .select("is_nri, preferred_timezone, display_currency")
+    .eq("user_id", userId)
     .maybeSingle();
   return data;
 }
