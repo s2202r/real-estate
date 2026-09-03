@@ -112,3 +112,47 @@ describe("searchCities", () => {
     expect(searchCities("zzzzzz")).toHaveLength(0);
   });
 });
+
+describe("alternate names", () => {
+  it("resolves the name people actually type to the canonical city", () => {
+    // Both names are in daily use for all of these, often the older one more.
+    const pairs: [string, string][] = [
+      ["Bangalore", "Bengaluru"],
+      ["Bombay", "Mumbai"],
+      ["Calcutta", "Kolkata"],
+      ["Madras", "Chennai"],
+      ["Trivandrum", "Thiruvananthapuram"],
+      ["Allahabad", "Prayagraj"],
+      ["Baroda", "Vadodara"],
+      ["Vizag", "Visakhapatnam"],
+      ["Pondicherry", "Puducherry"],
+      ["Gurugram", "Gurgaon"],
+    ];
+
+    for (const [typed, canonical] of pairs) {
+      expect(findCity(typed)?.name, typed).toBe(canonical);
+    }
+  });
+
+  it("ignores case and spacing in an alias", () => {
+    expect(findCity("  BANGALORE ")?.name).toBe("Bengaluru");
+    expect(findCity("new bombay")?.name).toBe("Navi Mumbai");
+  });
+
+  it("stores the canonical name, never the alias", () => {
+    // The alias exists to be typed, not to be saved: two spellings of one city
+    // must never become two cities in the data.
+    expect(indianCities.some((city) => city.name === "Bangalore")).toBe(false);
+    expect(isKnownCity("Bangalore")).toBe(true);
+  });
+
+  it("offers the aliased city first when searching", () => {
+    expect(searchCities("Bombay")[0]?.name).toBe("Mumbai");
+    expect(searchCities("bangalore")[0]?.name).toBe("Bengaluru");
+  });
+
+  it("still returns nothing for a place that does not exist", () => {
+    expect(findCity("Atlantis")).toBeNull();
+    expect(searchCities("zzzzzz")).toHaveLength(0);
+  });
+});

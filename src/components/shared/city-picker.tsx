@@ -43,6 +43,7 @@ export function CityPicker({
   stateLabel = "State",
   error,
   stateError,
+  onValueChange,
 }: {
   name?: string;
   id?: string;
@@ -56,6 +57,8 @@ export function CityPicker({
   stateLabel?: string;
   error?: readonly string[];
   stateError?: readonly string[];
+  /** Notified as the field changes, for a caller that collects several. */
+  onValueChange?: (value: string) => void;
 }) {
   const generatedId = useId();
   const fieldId = id ?? `city-${generatedId}`;
@@ -76,6 +79,7 @@ export function CityPicker({
 
   const choose = (city: IndianCity) => {
     setValue(city.name);
+    onValueChange?.(city.name);
     setState(city.state);
     stateTouched.current = false;
     setOpen(false);
@@ -84,6 +88,7 @@ export function CityPicker({
 
   const onType = (next: string) => {
     setValue(next);
+    onValueChange?.(next);
     setOpen(true);
     setHighlight(0);
 
@@ -126,9 +131,11 @@ export function CityPicker({
   return (
     <div className={cn("grid gap-4", stateName ? "sm:grid-cols-2" : undefined, className)}>
       <div className="space-y-1.5">
-        <label htmlFor={fieldId} className="text-sm font-medium">
-          {label}
-        </label>
+        {label && (
+          <label htmlFor={fieldId} className="text-sm font-medium">
+            {label}
+          </label>
+        )}
 
         <div className="relative">
           <MapPin
@@ -164,6 +171,7 @@ export function CityPicker({
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent"
               onClick={() => {
                 setValue("");
+                onValueChange?.("");
                 setOpen(true);
               }}
             >

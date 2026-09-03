@@ -11,6 +11,7 @@ import { isSupabaseConfigured } from "@/config/env";
 import { features } from "@/config/features";
 import { appConfig } from "@/config/app";
 import { NriPreferences } from "./nri-preferences";
+import { ProfileForm } from "./profile-form";
 
 export const metadata = { title: "Profile and privacy" };
 
@@ -37,26 +38,13 @@ export default async function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-muted-foreground">Name</dt>
-              <dd className="mt-1 font-medium">{user.fullName}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Email</dt>
-              <dd className="mt-1 font-medium">{user.email}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Mobile</dt>
-              <dd className="mt-1 font-medium">
-                {profile?.phone ? `${profile.phone_country ?? ""}${profile.phone}` : "Not provided"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">City</dt>
-              <dd className="mt-1 font-medium">{user.city ?? "Not set"}</dd>
-            </div>
-          </dl>
+          <ProfileForm
+            fullName={user.fullName}
+            displayName={profile?.display_name ?? null}
+            phone={profile?.phone ?? null}
+            city={user.city ?? null}
+            email={user.email}
+          />
 
           <Separator className="my-5" />
 
@@ -165,7 +153,7 @@ async function getProfile(userId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("phone, phone_country, email_verified_at, phone_verified_at")
+    .select("display_name, phone, phone_country, email_verified_at, phone_verified_at")
     .eq("id", userId)
     .maybeSingle();
   return data;

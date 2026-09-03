@@ -860,9 +860,76 @@ for (const city of indianCities) {
 const STATES_BY_NAME = new Map(indianStates.map((state) => [key(state.name), state]));
 const STATES_BY_CODE = new Map(indianStates.map((state) => [state.code, state]));
 
+/**
+ * Names people actually type.
+ *
+ * Dozens of Indian cities were renamed and both names remain in daily use —
+ * often the older one more than the official one. Someone typing "Bangalore",
+ * "Bombay" or "Trivandrum" is not making a mistake, and a search that answers
+ * "no such city" to a third of the country is broken rather than strict.
+ *
+ * Aliases resolve to the canonical entry, so what is STORED is always the
+ * canonical name. That is the point: the alias exists to be typed, not to be
+ * saved, and two spellings of one city must never become two cities.
+ */
+const CITY_ALIASES: Readonly<Record<string, string>> = {
+  bangalore: "Bengaluru",
+  bombay: "Mumbai",
+  "new bombay": "Navi Mumbai",
+  calcutta: "Kolkata",
+  madras: "Chennai",
+  poona: "Pune",
+  gurugram: "Gurgaon",
+  mysore: "Mysuru",
+  mangalore: "Mangaluru",
+  belgaum: "Belagavi",
+  hubli: "Hubballi",
+  gulbarga: "Kalaburagi",
+  bellary: "Ballari",
+  bijapur: "Vijayapura",
+  shimoga: "Shivamogga",
+  tumkur: "Tumakuru",
+  trivandrum: "Thiruvananthapuram",
+  calicut: "Kozhikode",
+  cochin: "Kochi",
+  ernakulam: "Kochi",
+  trichur: "Thrissur",
+  quilon: "Kollam",
+  cannanore: "Kannur",
+  alleppey: "Alappuzha",
+  palghat: "Palakkad",
+  trichy: "Tiruchirappalli",
+  tiruchirapalli: "Tiruchirappalli",
+  tuticorin: "Thoothukudi",
+  ootacamund: "Ooty",
+  udhagamandalam: "Ooty",
+  pondicherry: "Puducherry",
+  allahabad: "Prayagraj",
+  benares: "Varanasi",
+  banaras: "Varanasi",
+  faizabad: "Ayodhya",
+  cawnpore: "Kanpur",
+  baroda: "Vadodara",
+  simla: "Shimla",
+  panjim: "Panaji",
+  vizag: "Visakhapatnam",
+  waltair: "Visakhapatnam",
+  rajamahendravaram: "Rajahmundry",
+  jubbulpore: "Jabalpur",
+  gauhati: "Guwahati",
+  "vasai virar": "Vasai-Virar",
+  "greater bombay": "Mumbai",
+  orissa: "Bhubaneswar",
+};
+
+/** The canonical name an alias points at, or the value unchanged. */
+function resolveAlias(value: string): string {
+  return CITY_ALIASES[key(value)] ?? value;
+}
+
 /** Every city of that name — a handful repeat across states (Aurangabad, Bilaspur). */
 export function citiesNamed(name: string): readonly IndianCity[] {
-  return CITIES_BY_NAME.get(key(name)) ?? [];
+  return CITIES_BY_NAME.get(key(resolveAlias(name))) ?? [];
 }
 
 /**
@@ -884,7 +951,9 @@ export function findCity(name: string, state?: string): IndianCity | null {
 }
 
 export function isKnownCity(name: string | undefined | null): boolean {
-  return Boolean(name && CITIES_BY_NAME.has(key(name)));
+  // Through the alias table, like `findCity`. If the two disagreed, a filter
+  // would accept a name that the lookup behind it cannot resolve.
+  return Boolean(name && CITIES_BY_NAME.has(key(resolveAlias(name))));
 }
 
 export function findState(name: string | undefined | null): IndianState | null {
@@ -918,6 +987,26 @@ export function citiesInState(state: string): readonly IndianCity[] {
 export function searchCities(query: string, limit = 8): readonly IndianCity[] {
   const term = key(query);
   if (!term) return indianCities.slice(0, limit);
+
+  // An alias typed in full jumps straight to its city, so "Bangalore" offers
+  // Bengaluru rather than nothing.
+  const aliased = CITY_ALIASES[term];
+  if (aliased) {
+    const match = CITIES_BY_NAME.get(key(aliased));
+    if (match && match[0]) {
+      const rest = searchCitiesByName(aliased, limit - 1).filter(
+        (city) => city.slug !== match[0]!.slug,
+      );
+      return [match[0], ...rest].slice(0, limit);
+    }
+  }
+
+  return searchCitiesByName(query, limit);
+}
+
+function searchCitiesByName(query: string, limit: number): readonly IndianCity[] {
+  const term = key(query);
+  if (!term || limit <= 0) return [];
 
   const scored: { city: IndianCity; rank: number }[] = [];
   for (const city of indianCities) {

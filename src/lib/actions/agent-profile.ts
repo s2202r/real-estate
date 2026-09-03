@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireAgent } from "@/lib/auth/session";
+import { AgentProfileSchema } from "@/lib/validation/profile";
 import {
   normaliseSocialUrl,
   PLATFORM_LABELS,
@@ -86,4 +87,76 @@ export async function updateAgentSocialLinks(
   revalidatePath("/agents");
 
   return { ok: true, message: "Links saved. They appear on your public profile." };
+}
+
+/**
+ * Edit the public half of an agent's profile.
+ *
+ * Everything here is an agent's DESCRIPTION OF THEMSELVES. Nothing here is the
+ * platform's judgement OF them: badges, verification level, trust score,
+ * ratings, response and conversion rates, complaint count, risk score and
+ * account status are all absent, and a BEFORE UPDATE trigger in the database
+ * reverts them if a write ever reaches the table with them set (§10, §13).
+ * That trigger is the guarantee; this is the part a reviewer can read.
+ *
+ * The row is chosen by the caller's own agent id, never by an id in the form.
+ */
+export async function updateAgentProfile(
+  _prev: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const unavailable = serviceUnavailable();
+  if (unavailable) return unavailable;
+
+  let user;
+  try {
+    user = await requireAgent();
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Not authorised." };
+  }
+
+  const parsed = AgentProfileSchema.safeParse({
+    agencyName: formData.get("agencyName") ?? undefined,
+    headline: formData.get("headline") ?? undefined,
+    bio: formData.get("bio") ?? undefined,
+    experienceYears: formData.get("experienceYears") ?? 0,
+    languages: formData.getAll("languages").map(String),
+    // Sent as one field per city so an empty list is distinguishable from a
+    // list containing an empty string.
+    serviceCities: formData.getAll("serviceCities").map(String).filter(Boolean),
+    acceptsVisitRequests: formData.get("acceptsVisitRequests") === "on",
+    maxVisitDistanceKm: formData.get("maxVisitDistanceKm") ?? 15,
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Please check the fields below.",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const input = parsed.data;
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("agents")
+    .update({
+      agency_name: input.agencyName ?? null,
+      headline: input.headline ?? null,
+      bio: input.bio ?? null,
+      experience_years: input.experienceYears,
+      languages: input.languages,
+      // De-duplicated: the same city twice is a filter that matches twice.
+      service_cities: [...new Set(input.serviceCities)],
+      accepts_visit_requests: input.acceptsVisitRequests,
+      max_visit_distance_km: String(input.maxVisitDistanceKm),
+    })
+    .eq("id", user.agentId);
+
+  if (error) return { ok: false, message: `Could not save your profile: ${error.message}` };
+
+  revalidatePath("/agent/profile");
+  revalidatePath("/agents");
+  return { ok: true, message: "Profile saved. Customers see the change immediately." };
 }

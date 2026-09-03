@@ -1,5 +1,4 @@
 import { BadgeCheck, FileText, Link2 as LinkIcon, ShieldCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -10,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/config/env";
 import type { Enums } from "@/types/database";
 import { SocialLinksForm } from "./social-links-form";
+import { AgentProfileForm } from "./profile-form";
 import { normaliseSocialUrl, type SocialPlatform } from "@/lib/domain/social";
 
 export const metadata = { title: "Profile and verification" };
@@ -37,45 +37,21 @@ export default async function AgentProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Public profile</CardTitle>
-          <CardDescription>What customers see at /agent/{agent.slug}</CardDescription>
+          <CardDescription>
+            What customers see at /agent/{agent.slug}. Saved changes appear immediately.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-muted-foreground">Agency</dt>
-              <dd className="mt-1 font-medium">{agent.agency_name ?? "Not set"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Experience</dt>
-              <dd className="mt-1 font-medium">{agent.experience_years} years</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Service cities</dt>
-              <dd className="mt-1 font-medium">
-                {agent.service_cities.length > 0 ? agent.service_cities.join(", ") : "Not set"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Languages</dt>
-              <dd className="mt-1 font-medium">{agent.languages.join(", ")}</dd>
-            </div>
-          </dl>
-
-          <Separator />
-
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Visit marketplace
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant={agent.accepts_visit_requests ? "success" : "muted"}>
-                {agent.accepts_visit_requests ? "Accepting visit offers" : "Not accepting visits"}
-              </Badge>
-              <Badge variant="muted">
-                Up to {Number(agent.max_visit_distance_km)} km
-              </Badge>
-            </div>
-          </div>
+        <CardContent>
+          <AgentProfileForm
+            agencyName={agent.agency_name}
+            headline={agent.headline}
+            bio={agent.bio}
+            experienceYears={agent.experience_years}
+            languages={agent.languages}
+            serviceCities={agent.service_cities}
+            acceptsVisitRequests={agent.accepts_visit_requests}
+            maxVisitDistanceKm={Number(agent.max_visit_distance_km)}
+          />
         </CardContent>
       </Card>
 
@@ -190,6 +166,8 @@ export default async function AgentProfilePage() {
 interface AgentProfileRow {
   slug: string;
   agency_name: string | null;
+  headline: string | null;
+  bio: string | null;
   experience_years: number;
   service_cities: string[];
   languages: string[];
@@ -214,7 +192,7 @@ async function getAgent(agentId: string): Promise<AgentProfileRow | null> {
   const { data } = await supabase
     .from("agents")
     .select(
-      "slug, agency_name, experience_years, service_cities, languages, badges, accepts_visit_requests, max_visit_distance_km, website_url, instagram_url, youtube_url, linkedin_url, facebook_url",
+      "slug, agency_name, headline, bio, experience_years, service_cities, languages, badges, accepts_visit_requests, max_visit_distance_km, website_url, instagram_url, youtube_url, linkedin_url, facebook_url",
     )
     .eq("id", agentId)
     .maybeSingle();
