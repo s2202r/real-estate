@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { clientEnv, isSupabaseConfigured } from "@/config/env";
+import { mightHaveSession } from "./has-session-cookie";
 import type { Database } from "@/types/database";
 
 /**
@@ -15,6 +16,12 @@ export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   if (!isSupabaseConfigured()) {
+    return { response, user: null };
+  }
+
+  // No session cookie, no session to refresh. This runs on every request, and
+  // for an anonymous visitor the round trip below could only ever return null.
+  if (!mightHaveSession(request.cookies.getAll())) {
     return { response, user: null };
   }
 

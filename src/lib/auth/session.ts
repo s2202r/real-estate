@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+import { mightHaveSession } from "@/lib/supabase/has-session-cookie";
 import "server-only";
 
 import { cache } from "react";
@@ -36,6 +38,11 @@ export interface SessionUser extends ActorRoles {
  */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (!isSupabaseConfigured()) return null;
+
+  // Same reasoning as the middleware: the site header and footer ask this on
+  // every public page, and for a visitor with no session cookie the auth round
+  // trip and five profile queries below can only produce null.
+  if (!mightHaveSession((await cookies()).getAll())) return null;
 
   const supabase = await createClient();
 

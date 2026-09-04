@@ -16,7 +16,7 @@ import {
 import { setLocationScope } from "@/lib/actions/location";
 import { describeScope, type LocationScope } from "@/lib/location/scope";
 import type { ProjectSummary } from "@/lib/data/places";
-import { searchCities } from "@/data/india";
+import type { IndianCity } from "@/data/india";
 import { cn } from "@/lib/utils";
 
 /**
@@ -58,6 +58,28 @@ export function LocationPicker({
   const [loadingOptions, setLoadingOptions] = useState(false);
 
   const [cityQuery, setCityQuery] = useState("");
+
+  /**
+   * The all-India city list, fetched only when this panel is opened.
+   *
+   * It used to be a plain import. That put a 665-entry dataset into the
+   * header's client graph, and the header is on EVERY page — which cost about
+   * 17ms of server CPU per request across the whole site, measured, for a
+   * feature almost nobody opens. Now the module is a separate chunk, loaded on
+   * the tap that reveals the search box, and the rest of the site never pays
+   * for it.
+   */
+  const [searchCities, setSearchCities] = useState<
+    ((query: string, limit?: number) => readonly IndianCity[]) | null
+  >(null);
+
+  const loadCityIndex = () => {
+    if (searchCities) return;
+    void import("@/data/india").then((india) => {
+      // Stored in a closure: React would call a bare function as an updater.
+      setSearchCities(() => india.searchCities);
+    });
+  };
   const [localityQuery, setLocalityQuery] = useState("");
   const [projectQuery, setProjectQuery] = useState("");
 
@@ -68,6 +90,7 @@ export function LocationPicker({
   /** Reopening shows what is actually in force, not last time's draft. */
   const handleOpenChange = (next: boolean) => {
     if (next) {
+      loadCityIndex();
       setDraft(scope);
       setOptions({ localities: [...localities], projects: [...projects] });
       setCityQuery("");
@@ -120,8 +143,8 @@ export function LocationPicker({
    * site does not cover them.
    */
   const cityMatches = useMemo(
-    () => (cityQuery.trim() ? searchCities(cityQuery, 12) : []),
-    [cityQuery],
+    () => (cityQuery.trim() && searchCities ? searchCities(cityQuery, 12) : []),
+    [cityQuery, searchCities],
   );
 
   const visibleLocalities = useMemo(() => {
@@ -250,7 +273,9 @@ export function LocationPicker({
             </div>
 
             {cityQuery.trim() ? (
-              cityMatches.length === 0 ? (
+              !searchCities ? (
+                <p className="text-sm text-muted-foreground">Loading cities…</p>
+              ) : cityMatches.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No city matches “{cityQuery.trim()}”.
                 </p>
